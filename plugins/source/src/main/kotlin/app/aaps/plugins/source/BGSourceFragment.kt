@@ -66,6 +66,7 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
     private var _binding: SourceFragmentBinding? = null
 
     // This property is only valid between onCreateView and onDestroyView.
+    override fun advancedFilteringSupported(): Boolean = true
     private val binding get() = _binding!!
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
