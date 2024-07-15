@@ -39,6 +39,7 @@ class GlimpPlugin @Inject constructor(
 ), BgSource {
 
     // cannot be inner class because of needed injection
+    override fun advancedFilteringSupported(): Boolean = true
     class GlimpWorker(
         context: Context,
         params: WorkerParameters
