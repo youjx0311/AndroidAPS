@@ -27,6 +27,7 @@ DEV:
 
 https://afdian.net/a/manong
 ## How to Build
+
 ## 如何编译
 
 ### If your are familiar with Android development:
