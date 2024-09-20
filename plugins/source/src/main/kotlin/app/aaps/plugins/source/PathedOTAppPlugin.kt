@@ -35,6 +35,7 @@ class PathedOTAppPlugin @Inject constructor(injector: HasAndroidInjector, rh: Re
     aapsLogger, rh, injector), BgSource {
 
     // cannot be inner class because of needed injection
+    override fun advancedFilteringSupported(): Boolean = true    
     class PathedOTAppWorker(context: Context, params: WorkerParameters) : LoggingWorker(context, params, Dispatchers.IO) {
 
         @Inject lateinit var mOTAppPlugin: PathedOTAppPlugin
@@ -45,7 +46,6 @@ class PathedOTAppPlugin @Inject constructor(injector: HasAndroidInjector, rh: Re
         init {
             (context.applicationContext as HasAndroidInjector).androidInjector().inject(this)
         }
-
         override suspend fun doWorkAndLog(): Result {
             var ret = Result.success()
             if (!mOTAppPlugin.isEnabled()) return Result.success()
