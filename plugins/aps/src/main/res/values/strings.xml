@@ -3,7 +3,7 @@
     <!--Autotune-->
     <string name="key_autotune_last_run" translatable="false">key_autotune_last_run</string>
 
-    <string name="dynisf_adjust_sensitivity">>启用基于TDD的基础和葡萄糖靶标修饰敏感性比</string>
+    <string name="dynisf_adjust_sensitivity">启用基于TDD的基础和葡萄糖靶标修饰敏感性比</string>
     <string name="dynisf_adjust_sensitivity_summary">使用过去 24 小时的 TDD/7 天 TDD 来计算用于增加或降低基础率的敏感度比率，如果启用了这些选项，也会像 Autosens 一样调整血糖目标。建议先关闭此选项。</string>
     <string name="dyn_isf_adjust_title" formatted="false">动态ISF调整系数%</string>
     <string name="dyn_isf_adjust_summary" formatted="false">Adjustment factor for DynamicISF. Set more than 100% for more aggressive correction doses, and less than 100% for less aggressive corrections.</string>
@@ -94,8 +94,8 @@
     <string name="smb_disabled_in_preferences">SMB disabled in preferences</string>
     <string name="uam_disabled_in_preferences">UAM disabled in preferences</string>
     <string name="autosens_disabled_in_preferences">Autosens disabled in preferences</string>
-    <string name="use_dynamic_sensitivity_title">Enable dynamic sensitivity</string>
-    <string name="use_dynamic_sensitivity_summary">Adjust algorithm to use dynamic sensitivity instead of profile value</string>
+    <string name="use_dynamic_sensitivity_title">启用动态灵敏度</string>
+    <string name="use_dynamic_sensitivity_summary">调整算法以使用动态灵敏度而不是配置文件值</string>
 
     <!--    Verify if needed in safety-->
     <string name="limiting_iob">Limiting IOB to %1$.1f U because of %2$s</string>
