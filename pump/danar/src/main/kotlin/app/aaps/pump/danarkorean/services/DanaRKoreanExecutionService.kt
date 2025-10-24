@@ -9,6 +9,7 @@ import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.notifications.Notification
+import app.aaps.core.interfaces.notifications.NotificationConstants
 import app.aaps.core.interfaces.profile.Profile
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.pump.BolusProgressData
@@ -162,9 +163,9 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 aapsLogger.debug(LTag.PUMP, "Approaching daily limit: " + danaPump.dailyTotalUnits + "/" + danaPump.maxDailyTotalUnits)
                 if (System.currentTimeMillis() > lastApproachingDailyLimit + 30 * 60 * 1000) {
                     uiInteraction.addNotification(Notification(
-                        id = Notification.APPROACHING_DAILY_LIMIT,
+                        id = NotificationConstants.APPROACHING_DAILY_LIMIT,
                         text = rh.gs(R.string.approachingdailylimit),
-                        level = Notification.URGENT
+                        level = NotificationConstants.URGENT
                     ))
                     pumpSync.insertAnnouncement(
                         rh.gs(R.string.approachingdailylimit) + ": " + danaPump.dailyTotalUnits + "/" + danaPump.maxDailyTotalUnits + "U",
@@ -322,9 +323,9 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 aapsLogger.error(LTag.PUMP, "Bolus failed after $MAX_BOLUS_RETRIES attempts: $amount U not delivered")
                 // 发送失败通知（已修复编译错误）
                 uiInteraction.addNotification(Notification(
-                    id = Notification.BOLUS_FAILED,
+                    id = NotificationConstants.BOLUS_FAILED,
                     text = rh.gs(R.string.bolus_failed),
-                    level = Notification.URGENT
+                    level = NotificationConstants.URGENT
                 ))
             }
         }
