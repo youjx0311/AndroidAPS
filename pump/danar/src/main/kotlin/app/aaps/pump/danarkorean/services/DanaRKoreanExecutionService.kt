@@ -284,9 +284,9 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                         danaPump.bolusDone = true // 失败也标记为“完成”，避免阻塞后续操作
                         aapsLogger.error(LTag.PUMP, "Bolus failed after $MAX_RETRIES retries")
                         // 2. 新增：失败时通知命令队列，避免重复重试
-                        commandQueue.finishCommand(
+                        commandQueue.completeCommand(
                             Command.CommandType.BOLUS,
-                            PumpEnactResult(success = false, comment = "Bolus failed after retries")
+                            PumpEnactResult.success(false, "Bolus failed after retries")
                         )
                         // 发送“大剂量失败”事件
                         rxBus.send(EventOverviewBolusProgress(t, EventOverviewBolusProgress.Status.FAILED))
@@ -297,9 +297,9 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                     danaPump.bolusDone = true // 3. 关键修复：成功后标记大剂量已完成
                     aapsLogger.debug(LTag.PUMP, "Bolus successful, delivered $amount U")
                     // 4. 关键修复：通知命令队列“大剂量命令已完成”，避免重复执行
-                    commandQueue.finishCommand(
+                    commandQueue.completeCommand(
                         Command.CommandType.BOLUS,
-                        PumpEnactResult(success = true, comment = "Bolus delivered: $amount U")
+                        PumpEnactResult.success(true, "Bolus delivered: $amount U")
                     )
                     // 5. 关键修复：发送“大剂量完成”事件，同步全系统状态
                     rxBus.send(EventOverviewBolusProgress(t, EventOverviewBolusProgress.Status.COMPLETED))
