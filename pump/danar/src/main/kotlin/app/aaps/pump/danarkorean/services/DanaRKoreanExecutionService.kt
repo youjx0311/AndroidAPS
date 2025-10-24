@@ -316,7 +316,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             } else {
                 t.insulin = 0.0
                 aapsLogger.error(LTag.PUMP, "Bolus failed after $MAX_BOLUS_RETRIES attempts: $amount U not delivered")
-                // 发送失败通知（可选，根据上层需求调整）
+                // 发送失败通知（已修复编译错误）
                 uiInteraction.addNotification(Notification.BOLUS_FAILED, rh.gs(R.string.bolus_failed), Notification.URGENT)
             }
         }
