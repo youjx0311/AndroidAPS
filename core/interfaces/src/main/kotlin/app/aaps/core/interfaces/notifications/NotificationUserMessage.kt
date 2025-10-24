@@ -1,13 +1,12 @@
 package app.aaps.core.interfaces.notifications
 
-class NotificationUserMessage(text: String, notifyLevel: Int = URGENT) : Notification() {
-
-    init {
-        var hash = text.hashCode()
-        if (hash < USER_MESSAGE) hash += USER_MESSAGE
-        id = hash
-        date = System.currentTimeMillis()
-        this.text = text
-        level = notifyLevel // URGENT
+data class NotificationUserMessage(
+    override var id: Int,
+    override var date: Long,
+    override var text: String,
+    override var level: Int
+) : Notification(id, date, text, level) {
+    companion object {
+        const val USER_MESSAGE = NotificationConstants.USER_MESSAGE
     }
 }
