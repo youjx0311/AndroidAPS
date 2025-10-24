@@ -58,6 +58,11 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var commandQueue: CommandQueue
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
+
+    // 新增：声明缺失的变量 bolStopped
+    var bolStopped: Boolean = false
+    var bolusStopForced: Boolean = false
+
     override fun onCreate() {
         super.onCreate()
         mBinder = LocalBinder()
@@ -140,7 +145,6 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 aapsLogger.debug(LTag.PUMP, "Pump time difference: $timeDiff seconds")
                 if (abs(timeDiff) > 10) {
                     waitForWholeMinute() 
-                    // 修复：修正方法调用和括号匹配
                     mSerialIOThread?.sendMessage(MsgSetTime(injector, dateUtil.now() + T.secs(10).msecs()))
                     mSerialIOThread?.sendMessage(MsgSettingPumpTime(injector))
                     timeDiff = (danaPump.pumpTime - System.currentTimeMillis()) / 1000L
@@ -195,7 +199,6 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     override fun extendedBolus(insulin: Double, durationInHalfHours: Int): Boolean {
         if (!isConnected) return false
         rxBus.send(EventPumpStatusChanged(rh.gs(R.string.settingextendedbolus)))
-        // 修复：修正括号匹配和类型转换
         mSerialIOThread?.sendMessage(MsgSetExtendedBolusStart(injector, insulin, (durationInHalfHours and 0xFF).toByte()))
         mSerialIOThread?.sendMessage(MsgStatusBolusExtended(injector))
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
@@ -228,8 +231,9 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
         while (retryCount <= MAX_RETRIES && !isSuccess) {
             val start = MsgBolusStart(injector, amount)
-            danaPump.bolStopped = false
-            danaPump.bolusStopForced = false
+            // 初始化变量
+            bolStopped = false
+            bolusStopForced = false
             start.failed = false
 
             if (carbs > 0) {
@@ -240,7 +244,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 danaPump.bolusingTreatment = t
                 danaPump.bolusAmountToBeDelivered = amount
 
-                if (!danaPump.bolusStopped) {
+                if (!bolStopped) {
                     mSerialIOThread?.sendMessage(start)
                 } else {
                     t.insulin = 0.0
@@ -249,11 +253,11 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
 
                 val timeoutTime = System.currentTimeMillis() + 30 * 1000L
-                while (!danaPump.bolusStopped && !start.failed && System.currentTimeMillis() < timeoutTime) {
+                while (!bolStopped && !start.failed && System.currentTimeMillis() < timeoutTime) {
                     SystemClock.sleep(100)
                     if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000L) {
-                        danaPump.bolusStopped = true
-                        danaPump.bolusStopForced = true
+                        bolStopped = true
+                        bolusStopForced = true
                         start.failed = true
                         aapsLogger.debug(LTag.PUMP, "Communication stopped during bolus")
                     }
