@@ -59,7 +59,6 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
 
-    // 新增：声明缺失的变量 bolStopped
     var bolStopped: Boolean = false
     var bolusStopForced: Boolean = false
 
@@ -76,7 +75,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             getBTSocketForSelectedPump()
             if (mRfcommSocket == null || mBTDevice == null) {
                 isConnecting = false
-                return@Runnable  // Device not found
+                return@Runnable
             }
             try {
                 mRfcommSocket?.connect()
@@ -218,8 +217,13 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         return null
     }
 
+    // 假设项目中存在 PumpEnactResult 的实现类，若没有需自行定义
+    data class PumpEnactResultImpl(
+        override val success: Boolean,
+        override val comment: String?
+    ) : PumpEnactResult
+
     override fun bolus(amount: Double, carbs: Int, carbTimeStamp: Long, t: EventOverviewBolusProgress.Treatment): Boolean {
-        // 1. 新增：先检查是否有正在执行的大剂量，避免并发重复执行
         if (danaPump.bolusingTreatment != null && danaPump.bolusingTreatment != t) {
             aapsLogger.warn(LTag.PUMP, "Another bolus is in progress, skip current request")
             return false
@@ -228,16 +232,15 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         if (BolusProgressData.stopPressed) return false
         
         danaPump.bolusingTreatment = t
-        danaPump.bolusDone = false // 初始化：标记大剂量未完成
-        danaPump.bolusAmountToBeDelivered = amount // 同步待输注剂量到泵模型
-        val MAX_RETRIES = 1 // 大剂量失败后最多重试1次
+        danaPump.bolusDone = false
+        danaPump.bolusAmountToBeDelivered = amount
+        val MAX_RETRIES = 1
         var retryCount = 0
         var isSuccess = false
-        val RETRY_DELAY = 1500L // 重试前等待1.5秒（给泵/通信恢复时间）
+        val RETRY_DELAY = 1500L
 
         while (retryCount <= MAX_RETRIES && !isSuccess) {
             val start = MsgBolusStart(injector, amount)
-            // 重置单次重试的状态变量
             bolStopped = false
             bolusStopForced = false
             start.failed = false
@@ -254,25 +257,20 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                     continue
                 }
 
-                // 发送大剂量启动指令
                 mSerialIOThread?.sendMessage(start)
 
-                // 等待大剂量执行完成/超时/中断
                 val timeoutTime = System.currentTimeMillis() + 30 * 1000L
                 while (!bolStopped && !start.failed && System.currentTimeMillis() < timeoutTime) {
                     SystemClock.sleep(100)
-                    // 检查通信是否中断（15秒无进度更新则强制停止）
                     if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000L) {
                         bolStopped = true
                         bolusStopForced = true
                         start.failed = true
                         aapsLogger.debug(LTag.PUMP, "Communication stopped during bolus, force stop")
-                        // 发送大剂量停止指令（确保泵实际停止输注）
                         mSerialIOThread?.sendMessage(MsgBolusStart(injector, 0.0)) 
                     }
                 }
 
-                // 处理单次重试结果
                 if (start.failed) {
                     if (retryCount < MAX_RETRIES) {
                         aapsLogger.debug(LTag.PUMP, "Bolus failed, retrying (attempt ${retryCount + 1})")
@@ -281,36 +279,30 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                     } else {
                         isSuccess = false
                         t.insulin = 0.0
-                        danaPump.bolusDone = true // 失败也标记为“完成”，避免阻塞后续操作
+                        danaPump.bolusDone = true
                         aapsLogger.error(LTag.PUMP, "Bolus failed after $MAX_RETRIES retries")
-                        // 2. 新增：失败时通知命令队列，避免重复重试
                         commandQueue.finishCommand(
                             Command.CommandType.BOLUS,
-                            PumpEnactResult(success = false, comment = "Bolus failed after retries")
+                            PumpEnactResultImpl(success = false, comment = "Bolus failed after retries")
                         )
-                        // 发送“大剂量失败”事件
                         rxBus.send(EventOverviewBolusProgress(t, EventOverviewBolusProgress.Status.FAILED))
                     }
                 } else {
                     isSuccess = true
                     t.insulin = amount
-                    danaPump.bolusDone = true // 3. 关键修复：成功后标记大剂量已完成
+                    danaPump.bolusDone = true
                     aapsLogger.debug(LTag.PUMP, "Bolus successful, delivered $amount U")
-                    // 4. 关键修复：通知命令队列“大剂量命令已完成”，避免重复执行
                     commandQueue.finishCommand(
                         Command.CommandType.BOLUS,
-                        PumpEnactResult(success = true, comment = "Bolus delivered: $amount U")
+                        PumpEnactResultImpl(success = true, comment = "Bolus delivered: $amount U")
                     )
-                    // 5. 关键修复：发送“大剂量完成”事件，同步全系统状态
                     rxBus.send(EventOverviewBolusProgress(t, EventOverviewBolusProgress.Status.COMPLETED))
                 }
             }
         }
 
-        // 清理：无论成功/失败，都重置执行中的治疗记录
         SystemClock.sleep(300)
         danaPump.bolusingTreatment = null
-        // 读取泵状态确认结果（仅做状态同步，不触发命令重试）
         commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         return isSuccess
     }
@@ -325,7 +317,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         val basal: Array<Double> = danaPump.buildDanaRProfileRecord(profile)
         val msgSet = MsgSetSingleBasalProfile(injector, basal)
         mSerialIOThread?.sendMessage(msgSet)
-        danaPump.lastSettingsRead = 0 // force read full settings
+        danaPump.lastSettingsRead = 0
         getPumpStatus()
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
         return true
@@ -334,7 +326,6 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     override fun setUserOptions(): PumpEnactResult? = null
 
     inner class LocalBinder : Binder() {
-
         val serviceInstance: DanaRKoreanExecutionService
             get() = this@DanaRKoreanExecutionService
     }
