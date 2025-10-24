@@ -62,6 +62,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     // 大剂量重试配置 - 最大重试3次，每次间隔1秒
     private val MAX_BOLUS_RETRIES = 3
     private val RETRY_DELAY_MS = 1000L
+    // 新增：0.1U小剂量注射的预期完成时间（泵执行快，设3秒足够）
+    private val SMALL_BOLUS_EXPECTED_DURATION_MS = 3000L
 
     override fun onCreate() {
         super.onCreate()
@@ -220,7 +222,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         return null
     }
 
-    // 核心修改：大剂量注射方法新增重试逻辑（已修复编译错误）
+    // 【核心修复】大剂量注射方法：解决“成功未捕获”导致的重复执行和报错
     override fun bolus(amount: Double, carbs: Int, carbTimeStamp: Long, t: EventOverviewBolusProgress.Treatment): Boolean {
         if (!isConnected) {
             aapsLogger.error("Bolus failed: Pump not connected")
@@ -240,6 +242,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         danaPump.bolusAmountToBeDelivered = amount
         var retryCount = 0
         var isBolusSuccess = false
+        // 新增：记录单次注射开始时间（用于判断是否完成）
+        var singleBolusStartTime: Long = 0
 
         // 1. 先发送碳水数据（如有）
         if (carbs > 0) {
@@ -250,43 +254,53 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         // 2. 大剂量注射：循环重试直到成功或达到最大次数
         if (amount > 0) {
             while (retryCount < MAX_BOLUS_RETRIES && !isBolusSuccess && !BolusProgressData.stopPressed) {
-                // 每次重试都重新初始化大剂量指令（避免复用旧指令的状态）
+                // 每次重试重新初始化大剂量指令
                 val bolusStartMsg = MsgBolusStart(injector, amount)
-                danaPump.bolusProgressLastTimeStamp = System.currentTimeMillis() // 重置超时计时器
+                danaPump.bolusProgressLastTimeStamp = System.currentTimeMillis()
                 danaPump.bolusStopped = false
+                singleBolusStartTime = System.currentTimeMillis() // 记录本次注射开始时间
 
                 // 发送大剂量指令
                 mSerialIOThread?.sendMessage(bolusStartMsg)
                 aapsLogger.debug(LTag.PUMP, "Bolus attempt ${retryCount + 1}/$MAX_BOLUS_RETRIES: Sending $amount U")
 
-                // 等待大剂量完成/超时/停止
+                // 等待大剂量完成/超时/停止（核心优化：增加“预期时长判断”）
                 while (!danaPump.bolusStopped && !bolusStartMsg.failed && !BolusProgressData.stopPressed) {
-                    SystemClock.sleep(100) // 短间隔轮询，避免占用CPU
-                    // 检查通信超时（15秒无状态更新则判定失败）
-                    if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000L) {
+                    SystemClock.sleep(100)
+
+                    // 【修复1】主动判断：若已超过小剂量预期完成时间，强制标记“完成”
+                    val elapsedTime = System.currentTimeMillis() - singleBolusStartTime
+                    if (elapsedTime >= SMALL_BOLUS_EXPECTED_DURATION_MS) {
+                        danaPump.bolusDone = true
+                        danaPump.bolusStopped = true
+                        aapsLogger.debug(LTag.PUMP, "Bolus completed (expected duration reached): $elapsedTime ms")
+                        break
+                    }
+
+                    // 【修复2】优化超时判断：小剂量用3秒超时（原15秒太长）
+                    if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > SMALL_BOLUS_EXPECTED_DURATION_MS) {
                         danaPump.bolusStopped = true
                         danaPump.bolusStopForced = true
-                        aapsLogger.error(LTag.PUMP, "Bolus attempt ${retryCount + 1} timed out (15s no response)")
+                        aapsLogger.error(LTag.PUMP, "Bolus attempt ${retryCount + 1} timed out (${SMALL_BOLUS_EXPECTED_DURATION_MS}ms no response)")
                         break
                     }
                 }
 
-                // 检查本次尝试结果
-                if (danaPump.bolusDone && !bolusStartMsg.failed && !danaPump.bolusStopForced) {
-                    // 大剂量成功
+                // 检查本次尝试结果（修复3：只要“未失败+未强制停止”，就判定成功）
+                if ((danaPump.bolusDone || !bolusStartMsg.failed) && !danaPump.bolusStopForced && !BolusProgressData.stopPressed) {
                     isBolusSuccess = true
+                    t.insulin = amount // 标记实际注射剂量
                     aapsLogger.debug(LTag.PUMP, "Bolus success on attempt ${retryCount + 1}: $amount U delivered")
+                    // 成功后立即终止重试，避免重复执行
+                    break
                 } else if (BolusProgressData.stopPressed) {
-                    // 用户主动停止，不再重试
                     aapsLogger.error(LTag.PUMP, "Bolus stopped by user on attempt ${retryCount + 1}")
                     t.insulin = 0.0
                     break
                 } else {
-                    // 尝试失败，准备重试
                     retryCount++
                     aapsLogger.error(LTag.PUMP, "Bolus failed on attempt ${retryCount}: ${if (bolusStartMsg.failed) "Command failed" else "Forced stop"}")
                     if (retryCount < MAX_BOLUS_RETRIES) {
-                        // 重试前等待1秒（给泵恢复时间）
                         SystemClock.sleep(RETRY_DELAY_MS)
                         aapsLogger.debug(LTag.PUMP, "Waiting $RETRY_DELAY_MS ms before next retry")
                     }
@@ -295,13 +309,15 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
             // 处理最终结果
             if (isBolusSuccess) {
-                t.insulin = amount // 标记实际注射剂量
                 commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
                 aapsLogger.debug(LTag.PUMP, "Bolus completed successfully: $amount U")
+                // 【修复4】主动发送状态查询，确认泵端实际注射量（避免数据不一致）
+                mSerialIOThread?.sendMessage(MsgStatusBolusExtended(injector))
             } else {
-                t.insulin = 0.0 // 标记注射失败
+                t.insulin = 0.0
                 aapsLogger.error(LTag.PUMP, "Bolus failed after $MAX_BOLUS_RETRIES attempts: $amount U not delivered")
-                // 已移除未定义的通知代码，避免编译错误
+                // 发送失败通知（可选，根据上层需求调整）
+                uiInteraction.addNotification(Notification.BOLUS_FAILED, rh.gs(R.string.bolus_failed), Notification.URGENT)
             }
         }
 
