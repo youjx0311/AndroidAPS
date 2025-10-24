@@ -4,6 +4,11 @@ import android.content.Context
 import androidx.annotation.RawRes
 import java.util.concurrent.TimeUnit
 
+object Notification {
+    const val BOLUS_FAILED = "BOLUS_FAILED"
+    // 可根据需要添加其他通知常量
+}
+
 open class Notification {
 
     var id = 0
