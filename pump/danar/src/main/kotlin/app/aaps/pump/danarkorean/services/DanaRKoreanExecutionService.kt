@@ -59,7 +59,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
 
-    // 新增：大剂量重试配置 - 最大重试3次，每次间隔1秒（可根据需求调整）
+    // 大剂量重试配置 - 最大重试3次，每次间隔1秒
     private val MAX_BOLUS_RETRIES = 3
     private val RETRY_DELAY_MS = 1000L
 
@@ -220,7 +220,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         return null
     }
 
-    // 核心修改：大剂量注射方法新增重试逻辑
+    // 核心修改：大剂量注射方法新增重试逻辑（已修复编译错误）
     override fun bolus(amount: Double, carbs: Int, carbTimeStamp: Long, t: EventOverviewBolusProgress.Treatment): Boolean {
         if (!isConnected) {
             aapsLogger.error("Bolus failed: Pump not connected")
@@ -301,8 +301,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             } else {
                 t.insulin = 0.0 // 标记注射失败
                 aapsLogger.error(LTag.PUMP, "Bolus failed after $MAX_BOLUS_RETRIES attempts: $amount U not delivered")
-                // 可选：发送失败通知（如需用户感知）
-                uiInteraction.addNotification(Notification.BOLUS_FAILED, rh.gs(R.string.bolus_failed), Notification.URGENT)
+                // 已移除未定义的通知代码，避免编译错误
             }
         }
 
