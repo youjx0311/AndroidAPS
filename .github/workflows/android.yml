@@ -18,10 +18,22 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: 验证核心类文件是否存在
+      run: |
+        # 检查 EventOverviewBolusProgress.kt 是否存在于正确路径
+        if [ -f "core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt" ]; then
+          echo "✅ 找到 EventOverviewBolusProgress.kt"
+          # 打印文件内容前5行，确认类定义正确
+          head -n 5 "core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt"
+        else
+          echo "❌ 未找到 EventOverviewBolusProgress.kt，路径错误或文件未提交"
+          exit 1
+        fi
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    - name: Clean all caches
+    - name: 清理缓存
       run: |
         ./gradlew clean
         rm -rf ~/.gradle/caches/
@@ -29,18 +41,13 @@ jobs:
         rm -rf core/interfaces/build/
         rm -rf pump/danar/build/
     
-    - name: Build core:interfaces (确保编译成功)
+    - name: 构建 core:interfaces
       run: ./gradlew :core:interfaces:assembleDebug --stacktrace
     
-    - name: Build pump:danar (依赖已编译的 core:interfaces)
+    - name: 构建 pump:danar
       run: |
         export storePassword=${{ secrets.STORE_PASSWORD }}
         export keyAlias=${{ secrets.KEY_ALIAS }}
         export keyPassword=${{ secrets.KEY_PASSWORD }}
-        export storeFile=${{ secrets.STORE_FILE }}
+        export storeFile=${{ secrets secrets.STORE_FILE }}
         ./gradlew :pump:danar:assembleFullRelease --stacktrace
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: aaps
-        path: app/build/outputs/apk/full/release
