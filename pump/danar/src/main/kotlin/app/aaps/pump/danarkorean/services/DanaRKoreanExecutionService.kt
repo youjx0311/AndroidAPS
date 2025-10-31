@@ -292,19 +292,19 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
             }
             if (isFinalSuccess) {
-                // 明确使用完整类名+资源ID
+                // 明确使用完整类名 + 资源ID
                 uiInteraction.addNotification(
                     Notification.BOLUS_SUCCESS,
-                    rh.getString(R.string.bolus_ok) + "（${amount}U）",
+                    rh.gs(R.string.bolus_ok) + "（${amount}U）",
                     Notification.NORMAL
                 )
             } else {
                 t.insulin = 0.0
                 danaPump.bolusAmountToBeDelivered = 0.0
-                // 明确使用完整类名+资源ID
+                // 明确使用完整类名 + 资源ID
                 uiInteraction.addNotification(
                     Notification.BOLUS_FAILED,
-                    rh.getString(R.string.bolus_failed) + "（重试$MAX_RETRY_COUNT次失败：$failReason）",
+                    rh.gs(R.string.bolus_failed) + "（重试$MAX_RETRY_COUNT次失败：$failReason）",
                     Notification.URGENT
                 )
             }
@@ -313,7 +313,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         SystemClock.sleep(300)
         danaPump.bolusingTreatment = null
         commandQueue.readStatus(
-            if (isFinalSuccess) rh.getString(R.string.bolus_ok) else rh.getString(R.string.bolus_failed),
+            if (isFinalSuccess) rh.gs(R.string.bolus_ok) else rh.gs(R.string.bolus_failed),
             null
         )
         return isFinalSuccess
