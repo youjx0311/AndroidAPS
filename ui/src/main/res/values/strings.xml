@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bolus_constraint_applied">Bolus constraint applied</string>
+    <string name="bolus_failed">大剂量执行失败</string>
     <string name="carbs_constraint_applied">Carbs constraint applied</string>
     <string name="temp_target_short">TT</string>
     <string name="dialog_canceled">Dialog canceled</string>
