@@ -21,17 +21,19 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    # 新增：强制清理缓存和构建产物
-    - name: Clean project and cache
-      run: ./gradlew clean && rm -rf ~/.gradle/caches/
+    - name: Clean project and cache completely
+      run: |
+        ./gradlew clean
+        rm -rf ~/.gradle/caches/
+        rm -rf ~/.gradle/daemon/
     
-    - name: Build with Gradle
+    - name: Build with Gradle (force refresh dependencies)
       run: |
         export storePassword=${{ secrets.STORE_PASSWORD }}
         export keyAlias=${{ secrets.KEY_ALIAS }}
         export keyPassword=${{ secrets.KEY_PASSWORD }}
         export storeFile=${{ secrets.STORE_FILE }}
-        ./gradlew :pump:danar:assembleFullRelease --stacktrace --info  # 明确指定模块并输出详细日志
+        ./gradlew --refresh-dependencies :pump:danar:assembleFullRelease --stacktrace --info
     - name: Archive production artifacts
       uses: actions/upload-artifact@v4
       with:
