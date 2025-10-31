@@ -1,18 +1,24 @@
 package app.aaps.core.interfaces.rx.events
 
-import org.apache.commons.lang3.builder.ReflectionToStringBuilder
-import org.apache.commons.lang3.builder.ToStringStyle
+// 正确继承 Event 基类，无重复声明
+object EventOverviewBolusProgress : Event() {
 
-/** Base class for all events posted on the event bus.  */
-abstract class Event {
+    data class Treatment(
+        var insulin: Double = 0.0,
+        var carbs: Int = 0,
+        var isSMB: Boolean,
+        var id: Long
+    )
 
-    override fun toString(): String {
-        return ReflectionToStringBuilder.toString(this)
+    enum class Status {
+        ATTEMPTING,
+        COMPLETED,
+        STOPPED
     }
 
-    companion object {
-        init {
-            ReflectionToStringBuilder.setDefaultStyle(ToStringStyle.SHORT_PREFIX_STYLE)
-        }
-    }
+    var status = ""
+    var t: Treatment? = null
+    var percent = 0
+
+    fun isSMB(): Boolean = t?.isSMB == true
 }
