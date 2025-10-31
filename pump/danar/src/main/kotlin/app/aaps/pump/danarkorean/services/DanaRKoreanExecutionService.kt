@@ -59,7 +59,6 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
     
-    // 改为新增成员变量，避免重写final父类属性
     private var localLastApproachingDailyLimit: Long = 0L
 
     override fun onCreate() {
@@ -76,7 +75,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             getBTSocketForSelectedPump()
             if (mRfcommSocket == null || mBTDevice == null) {
                 isConnecting = false
-                return@Runnable  // 设备未找到
+                return@Runnable  
             }
             try {
                 mRfcommSocket?.connect()
@@ -227,14 +226,11 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     }
 
     override fun bolus(amount: Double, carbs: Int, carbTimeStamp: Long, t: EventOverviewBolusProgress.Treatment): Boolean {
-        // 封装单次大剂量尝试逻辑
         fun attemptBolus(attempt: Int): Boolean {
-            // 检查连接状态，如未连接则尝试连接
             if (!isConnected) {
                 aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 未连接，尝试连接...")
                 connect()
                 
-                // 等待连接完成（最多5秒超时）
                 var waitTime = 0
                 while (!isConnected && waitTime < 50) {
                     SystemClock.sleep(100)
@@ -247,31 +243,26 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
             }
 
-            // 检查是否需要停止
             if (BolusProgressData.stopPressed) {
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 已按下停止按钮，终止操作")
+                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 已按下停止按钮")
                 return false
             }
 
-            // 初始化泵状态
             danaPump.bolusingTreatment = t
             danaPump.bolusDone = false
             val start = MsgBolusStart(injector, amount)
             danaPump.bolusStopped = false
             danaPump.bolusStopForced = false
 
-            // 记录碳水化合物（如有）
             if (carbs > 0) {
                 mSerialIOThread?.sendMessage(MsgSetCarbsEntry(injector, carbTimeStamp, carbs))
             }
 
-            // 处理零剂量情况
             if (amount <= 0) {
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 剂量为零，无需执行")
+                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 剂量为零")
                 return true
             }
 
-            // 发送大剂量指令
             danaPump.bolusAmountToBeDelivered = amount
             if (danaPump.bolusStopped) {
                 aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 发送前已停止")
@@ -281,48 +272,49 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
             mSerialIOThread?.sendMessage(start)
             
-            // 等待执行结果（15秒超时）
             val startTime = System.currentTimeMillis()
             while (!danaPump.bolusStopped && !start.failed) {
                 if (System.currentTimeMillis() - startTime > 15 * 1000L) {
-                    aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 超时未完成")
+                    aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 超时")
                     start.failed = true
                     break
                 }
                 SystemClock.sleep(100)
             }
 
-            // 检查执行结果
             if (start.failed || danaPump.bolusStopForced) {
-                aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 执行失败（强制停止: ${danaPump.bolusStopForced}）")
+                aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 执行失败")
                 return false
             }
 
-            aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 执行成功")
-            SystemClock.sleep(300) // 等待泵确认
+            aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 成功")
+            SystemClock.sleep(300)
             return true
         }
 
-        // 首次尝试
         val firstAttemptSuccess = attemptBolus(1)
         if (firstAttemptSuccess) {
+            danaPump.bolusingTreatment = null
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
             return true
         }
 
-        // 首次失败，清理状态后重试一次
         aapsLogger.debug(LTag.PUMP, "首次尝试失败，开始第二次尝试...")
-        mSerialIOThread?.disconnect("首次大剂量失败后重试")
+        mSerialIOThread?.disconnect("首次失败后重试")
         danaPump.bolusStopped = true
         danaPump.bolusStopForced = false
 
-        // 第二次尝试
         val secondAttemptSuccess = attemptBolus(2)
-        if (!secondAttemptSuccess) {
-            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_failed), null)
+        danaPump.bolusingTreatment = null
+        
+        if (secondAttemptSuccess) {
+            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
+        } else {
+            commandQueue.readStatus(rh.gs(R.string.bolus_failed), null)
         }
+        
         return secondAttemptSuccess
-        }
+    }
 
     override fun highTempBasal(percent: Int, durationInMinutes: Int): Boolean = false
 
@@ -334,7 +326,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         val basal: Array<Double> = danaPump.buildDanaRProfileRecord(profile)
         val msgSet = MsgSetSingleBasalProfile(injector, basal)
         mSerialIOThread?.sendMessage(msgSet)
-        danaPump.lastSettingsRead = 0 // 强制重新读取设置
+        danaPump.lastSettingsRead = 0 
         getPumpStatus()
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
         return true
