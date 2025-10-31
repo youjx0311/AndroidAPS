@@ -59,8 +59,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
     
-    // 明确重写父类成员并添加override修饰符
-    override var lastApproachingDailyLimit: Long = 0L
+    // 改为新增成员变量，避免重写final父类属性
+    private var localLastApproachingDailyLimit: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -164,7 +164,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             
             if (danaPump.dailyTotalUnits > danaPump.maxDailyTotalUnits * Constants.dailyLimitWarning) {
                 aapsLogger.debug(LTag.PUMP, "接近每日限额: " + danaPump.dailyTotalUnits + "/" + danaPump.maxDailyTotalUnits)
-                if (System.currentTimeMillis() > lastApproachingDailyLimit + 30 * 60 * 1000) {
+                if (System.currentTimeMillis() > localLastApproachingDailyLimit + 30 * 60 * 1000) {
                     uiInteraction.addNotification(Notification.APPROACHING_DAILY_LIMIT, rh.gs(R.string.approachingdailylimit), Notification.URGENT)
                     pumpSync.insertAnnouncement(
                         rh.gs(R.string.approachingdailylimit) + ": " + danaPump.dailyTotalUnits + "/" + danaPump.maxDailyTotalUnits + "U",
@@ -172,7 +172,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                         PumpType.DANA_R_KOREAN,
                         danaRKoreanPlugin.serialNumber()
                     )
-                    lastApproachingDailyLimit = System.currentTimeMillis()
+                    localLastApproachingDailyLimit = System.currentTimeMillis()
                 }
             }
             doSanityCheck()
@@ -325,8 +325,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         } else {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_failed), null)
-            // 发送失败通知（使用正确的Notification枚举）
-            uiInteraction.addNotification(Notification.BOLUS_ERROR, rh.gs(R.string.bolus_failed), Notification.URGENT)
+            // 发送失败通知（使用正确的资源字符串）
+            uiInteraction.addNotification(Notification.ERROR, rh.gs(R.string.bolus_failed), Notification.URGENT)
         }
         
         return secondAttemptSuccess
