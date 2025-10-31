@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget  // 必须导入 JvmTarget
 
-// 顶层构建文件
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
 buildscript {
     repositories {
         google()
@@ -11,6 +11,10 @@ buildscript {
         classpath(libs.com.android.tools.build)
         classpath(libs.com.google.gms)
         classpath(libs.com.google.firebase.gradle)
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+
         classpath(libs.kotlin.gradlePlugin)
         classpath(libs.kotlin.allopen)
         classpath(libs.kotlin.serialization)
@@ -30,35 +34,19 @@ allprojects {
         maven("https://maven.google.com")
         maven("https://jitpack.io")
     }
-
-    // 修正 Kotlin 编译配置（JvmTarget 枚举类型）
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions {
-            freeCompilerArgs.addAll(
-                "-opt-in=kotlin.RequiresOptIn",
-                "-opt-in=kotlin.ExperimentalUnsignedTypes",
-                "-Xjvm-default=all"
-            )
-            // 关键：使用 JvmTarget 枚举，而非字符串
-            jvmTarget.set(JvmTarget.JVM_21)
+            freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
+            freeCompilerArgs.add("-opt-in=kotlin.ExperimentalUnsignedTypes")
+            freeCompilerArgs.add("-Xjvm-default=all") //Support @JvmDefault
+            jvmTarget.set(Versions.jvmTarget)
         }
     }
-
-    // 修正 Java 编译配置（参数类型和集合）
     gradle.projectsEvaluated {
-        tasks.withType<JavaCompile>().configureEach {
-            options.apply {
-                // 修正：用 listOf 包装编译器参数（集合类型）
-                compilerArgs.addAll(
-                    listOf(
-                        "-Xlint:deprecation",
-                        "-Xlint:unchecked"
-                    )
-                )
-                // 修正：使用字符串类型的 Java 版本
-                sourceCompatibility = "21"
-                targetCompatibility = "21"
-            }
+        tasks.withType<JavaCompile> {
+            val compilerArgs = options.compilerArgs
+            compilerArgs.add("-Xlint:deprecation")
+            compilerArgs.add("-Xlint:unchecked")
         }
     }
 
@@ -66,8 +54,9 @@ allprojects {
     apply(plugin = "jacoco")
 }
 
+// Setup all reports aggregation
 apply(from = "jacoco_aggregation.gradle.kts")
 
-tasks.register<Delete>("clean") {
+tasks.register<Delete>("clean").configure {
     delete(rootProject.layout.buildDirectory)
 }
