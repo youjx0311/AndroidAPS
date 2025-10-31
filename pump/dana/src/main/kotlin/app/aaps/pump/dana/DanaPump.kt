@@ -42,7 +42,6 @@ class DanaPump @Inject constructor(
 
     @Suppress("unused")
     enum class ErrorState(val code: Int) {
-
         NONE(0x00),
         SUSPENDED(0x01),
         DAILY_MAX(0x02),
@@ -51,7 +50,6 @@ class DanaPump @Inject constructor(
         NO_PRIME(0x10);
 
         companion object {
-
             private val map = entries.associateBy(ErrorState::code)
             operator fun get(value: Int) = map[value]
         }
@@ -59,29 +57,27 @@ class DanaPump @Inject constructor(
 
     var lastConnection: Long = 0
     var lastSettingsRead: Long = 0
-    @JvmField var readHistoryFrom: Long = 0 // start next history read from this timestamp
-    @JvmField var historyDoneReceived: Boolean = false // true when last history message is received
+    @JvmField var readHistoryFrom: Long = 0 
+    @JvmField var historyDoneReceived: Boolean = false 
 
     // Info
     var serialNumber = ""
     var shippingDate: Long = 0
     var shippingCountry = ""
-    var bleModel = "" // RS v3:  like BPN-1.0.1
-    var isNewPump = true // R only , providing model info
-    var password = -1 // R, RSv1
+    var bleModel = "" 
+    var isNewPump = true 
+    var password = -1 
 
     // time
     var pumpTime: Long = 0
-    var zoneOffset: Int = 0 // i (hw 7+)
+    var zoneOffset: Int = 0 
 
     fun setPumpTime(value: Long, zoneOffset: Int) {
-        // Store time according to timezone in phone
         val tz = DateTimeZone.getDefault()
         val instant = DateTime.now().millis
         val offsetInMilliseconds = tz.getOffset(instant).toLong()
         val offset = TimeUnit.MILLISECONDS.toHours(offsetInMilliseconds)
         pumpTime = value + T.hours(offset).msecs()
-        // but save zone in pump
         this.zoneOffset = zoneOffset
     }
 
@@ -106,7 +102,7 @@ class DanaPump @Inject constructor(
     var pumpSuspended = false
     var calculatorEnabled = false
     var dailyTotalUnits = 0.0
-    var decRatio = 0 // RS v3: [%] for pump IOB calculation
+    var decRatio = 0 
     var maxDailyTotalUnits = 0
     var bolusStep = 0.1
     var basalStep = 0.1
@@ -115,7 +111,7 @@ class DanaPump @Inject constructor(
     var batteryRemaining = 0
     var bolusBlocked = false
     var lastBolusTime: Long = 0
-    var lastBolusAmount = 0.0
+    var lastBolusAmount: Double? = null  // 新增：记录上次大剂量实际注射量
     var currentBasal = 0.0
 
     /*
@@ -123,7 +119,7 @@ class DanaPump @Inject constructor(
      */
 
     var tempBasalStart: Long = 0
-    var tempBasalDuration: Long = 0 // in milliseconds
+    var tempBasalDuration: Long = 0 
     var tempBasalPercent = 0
 
     var isTempBasalInProgress: Boolean
@@ -139,9 +135,7 @@ class DanaPump @Inject constructor(
 
     fun temporaryBasalToString(): String {
         if (!isTempBasalInProgress) return ""
-
-        val passedMin =
-            ((min(dateUtil.now(), tempBasalStart + tempBasalDuration) - tempBasalStart) / 60.0 / 1000).roundToInt()
+        val passedMin = ((min(dateUtil.now(), tempBasalStart + tempBasalDuration) - tempBasalStart) / 60.0 / 1000).roundToInt()
         return tempBasalPercent.toString() + "% @" +
             dateUtil.timeString(tempBasalStart) +
             " " + passedMin + "/" + T.msecs(tempBasalDuration).mins() + "'"
@@ -189,7 +183,6 @@ class DanaPump @Inject constructor(
 
     fun extendedBolusToString(): String {
         if (!isExtendedInProgress) return ""
-
         return "E " + decimalFormatter.to2Decimal(extendedBolusAbsoluteRate) + "U/h @" +
             dateUtil.timeString(extendedBolusStart) +
             " " + extendedBolusPassedMinutes + "/" + extendedBolusDurationInMinutes + "'"
@@ -208,6 +201,7 @@ class DanaPump @Inject constructor(
     }
 
     var isDualBolusInProgress = false
+    var isBolusing: Boolean = false  // 新增：标记是否正在进行大剂量注射
 
     // Profile R,RSv1
     var units = 0
@@ -240,7 +234,7 @@ class DanaPump @Inject constructor(
 
     // DanaRS specific
     var rsPassword = ""
-    var ignoreUserPassword = false // true if replaced by enhanced encryption
+    var ignoreUserPassword = false 
 
     // User settings
     var timeDisplayType24 = false
@@ -253,7 +247,7 @@ class DanaPump @Inject constructor(
     var lowReservoirRate = 0
     var cannulaVolume = 0
     var refillAmount = 0
-    var target = 0 // mgdl 40~400 mmol 2.2~22 => 220~2200
+    var target = 0 
     var userOptionsFromPump: ByteArray? = null
     var initialBolusAmount = 0.0
 
@@ -264,26 +258,20 @@ class DanaPump @Inject constructor(
         return if (units == UNITS_MGDL) GlucoseUnit.MGDL.asText else GlucoseUnit.MMOL.asText
     }
 
-    var bolusStartErrorCode: Int = 0 // last start bolus errorCode
-    var bolusingTreatment: EventOverviewBolusProgress.Treatment? = null // actually delivered treatment
-    var bolusAmountToBeDelivered = 0.0 // amount to be delivered
-    var bolusProgressLastTimeStamp: Long = 0 // timestamp of last bolus progress message
-    var bolusStopped = false // bolus finished
-    var bolusStopForced = false // bolus forced to stop by user
-    var bolusDone = false // success end
-    var lastEventTimeLoaded: Long = 0 // timestamp of last received event
-
-    // val lastKnownHistoryId: Int = 0 // hw ver 7+, 1-2000
+    var bolusStartErrorCode: Int = 0 
+    var bolusingTreatment: EventOverviewBolusProgress.Treatment? = null 
+    var bolusAmountToBeDelivered = 0.0 
+    var bolusProgressLastTimeStamp: Long = 0 
+    var bolusStopped = false 
+    var bolusStopForced = false 
+    var bolusDone = false 
+    var lastEventTimeLoaded: Long = 0 
 
     fun createConvertedProfile(): ProfileStore? {
         pumpProfiles?.let {
             val json = JSONObject()
             val store = JSONObject()
             val profile = JSONObject()
-            //        Morning / 6:00–10:59
-            //        Afternoon / 11:00–16:59
-            //        Evening / 17:00–21:59
-            //        Night / 22:00–5:59
             try {
                 json.put("defaultProfile", PROFILE_PREFIX + (activeProfile + 1))
                 json.put("store", store)
@@ -293,9 +281,9 @@ class DanaPump @Inject constructor(
                     carbRatios.put(JSONObject().put("time", "00:00").put("timeAsSeconds", 0).put("value", nightCIR))
                     carbRatios.put(JSONObject().put("time", "06:00").put("timeAsSeconds", 6 * 3600).put("value", morningCIR))
                     carbRatios.put(JSONObject().put("time", "11:00").put("timeAsSeconds", 11 * 3600).put("value", afternoonCIR))
-                    carbRatios.put(JSONObject().put("time", "14:00").put("timeAsSeconds", 17 * 3600).put("value", eveningCIR))
+                    carbRatios.put(JSONObject().put("time", "17:00").put("timeAsSeconds", 17 * 3600).put("value", eveningCIR))
                     carbRatios.put(JSONObject().put("time", "22:00").put("timeAsSeconds", 22 * 3600).put("value", nightCIR))
-                } else { // 24 values
+                } else { 
                     for (i in 0..23) {
                         carbRatios.put(
                             JSONObject()
@@ -313,7 +301,7 @@ class DanaPump @Inject constructor(
                     sens.put(JSONObject().put("time", "11:00").put("timeAsSeconds", 11 * 3600).put("value", afternoonCF))
                     sens.put(JSONObject().put("time", "17:00").put("timeAsSeconds", 17 * 3600).put("value", eveningCF))
                     sens.put(JSONObject().put("time", "22:00").put("timeAsSeconds", 22 * 3600).put("value", nightCF))
-                } else { // 24 values
+                } else { 
                     for (i in 0..23) {
                         sens.put(
                             JSONObject()
@@ -376,8 +364,6 @@ class DanaPump @Inject constructor(
     fun buildDanaRProfileRecord(nsProfile: Profile): Array<Double> {
         val record = Array(24) { 0.0 }
         for (hour in 0..23) {
-            //Some values get truncated to the next lower one.
-            // -> round them to two decimals and make sure we are a small delta larger (that will get truncated)
             val value = (100.0 * nsProfile.getBasalTimeFromMidnight((hour * 60 * 60))).roundToLong() / 100.0 + 0.00001
             aapsLogger.debug(LTag.PUMP, "NS basal value for $hour:00 is $value")
             record[hour] = value
@@ -408,13 +394,11 @@ class DanaPump @Inject constructor(
                 when (protocol) {
                     0x00 -> "DanaR old"
                     0x02 -> "DanaR v2"
-                    else -> "DanaR" // 0x01 and 0x03 known
+                    else -> "DanaR" 
                 }
-
             0x05       ->
                 if (protocol < 10) "DanaRS"
                 else "DanaRS v3"
-
             0x06       -> "DanaRS Korean"
             0x07       -> "Dana-i (BLE4.2)"
             0x09, 0x0A -> "Dana-i (BLE5)"
@@ -428,20 +412,17 @@ class DanaPump @Inject constructor(
                 when (protocol) {
                     0x00 -> PumpType.DANA_R
                     0x02 -> PumpType.DANA_RV2
-                    else -> PumpType.DANA_R // 0x01 and 0x03 known
+                    else -> PumpType.DANA_R 
                 }
-
             0x05 -> PumpType.DANA_RS
             0x06 -> PumpType.DANA_RS_KOREAN
             0x07 -> PumpType.DANA_I
             0x09 -> PumpType.DANA_I
-            0x0A -> PumpType.DANA_I // Korean version
-            else -> PumpType.DANA_RS // having here default type non TBR capable is causing problem with disabling loop
+            0x0A -> PumpType.DANA_I 
+            else -> PumpType.DANA_RS 
         }
 
-    // v2, RS history entries
     enum class HistoryEntry(val value: Int) {
-
         TEMP_START(1),
         TEMP_STOP(2),
         EXTENDED_START(3),
@@ -461,14 +442,11 @@ class DanaPump @Inject constructor(
         ;
 
         companion object {
-
             fun fromInt(value: Int) = entries.firstOrNull { it.value == value } ?: throw InvalidParameterException()
         }
-
     }
 
     companion object {
-
         const val UNITS_MGDL = 0
         const val UNITS_MMOL = 1
         const val DELIVERY_PRIME = 0x01
@@ -476,8 +454,6 @@ class DanaPump @Inject constructor(
         const val DELIVERY_BASAL = 0x04
         const val DELIVERY_EXT_BOLUS = 0x08
         const val PROFILE_PREFIX = "DanaR-"
-
-        // Dana R btModel
         const val DOMESTIC_MODEL = 0x01
         const val EXPORT_MODEL = 0x03
     }
