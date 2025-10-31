@@ -19,6 +19,13 @@ jobs:
         distribution: 'temurin'
         cache: gradle  # 保留基础缓存配置，但后续会强制清理
 
+
+     - name: 彻底清理缓存
+      run: |
+        ./gradlew clean
+        rm -rf ~/.gradle/caches/
+        rm -rf core/interfaces/build/
+
     - name: 彻底删除 Gradle 缓存（关键步骤）
       run: |
         # 删除用户目录下的所有 Gradle 缓存和守护进程文件
