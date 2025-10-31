@@ -60,6 +60,10 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var profileFunction: ProfileFunction
     
     private var localLastApproachingDailyLimit: Long = 0L
+    // 最大重试间隔时间(毫秒)，避免无限期快速重试
+    private val MAX_RETRY_INTERVAL = 30000L // 30秒
+    // 重试间隔增长因子，避免频繁重试导致泵负载过高
+    private val RETRY_INTERVAL_GROWTH = 1.5
 
     override fun onCreate() {
         super.onCreate()
@@ -226,9 +230,24 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     }
 
     override fun bolus(amount: Double, carbs: Int, carbTimeStamp: Long, t: EventOverviewBolusProgress.Treatment): Boolean {
-        fun attemptBolus(attempt: Int): Boolean {
+        // 记录尝试次数
+        var attemptCount = 0
+        // 初始重试间隔(毫秒)
+        var retryInterval = 1000L
+        
+        fun attemptBolus(): Boolean {
+            attemptCount++
+            aapsLogger.debug(LTag.PUMP, "大剂量尝试第 $attemptCount 次")
+            
+            // 发送尝试次数事件，用于UI显示
+            rxBus.send(EventOverviewBolusProgress(
+                EventOverviewBolusProgress.Status.ATTEMPTING,
+                attempt = attemptCount,
+                treatment = t
+            ))
+
             if (!isConnected) {
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 未连接，尝试连接...")
+                aapsLogger.debug(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 未连接，尝试连接...")
                 connect()
                 
                 var waitTime = 0
@@ -238,13 +257,18 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
                 
                 if (!isConnected) {
-                    aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 连接失败")
+                    aapsLogger.error(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 连接失败")
                     return false
                 }
             }
 
             if (BolusProgressData.stopPressed) {
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 已按下停止按钮")
+                aapsLogger.debug(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 已按下停止按钮")
+                rxBus.send(EventOverviewBolusProgress(
+                    EventOverviewBolusProgress.Status.STOPPED,
+                    attempt = attemptCount,
+                    treatment = t
+                ))
                 return false
             }
 
@@ -259,13 +283,13 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             }
 
             if (amount <= 0) {
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 剂量为零")
+                aapsLogger.debug(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 剂量为零")
                 return true
             }
 
             danaPump.bolusAmountToBeDelivered = amount
             if (danaPump.bolusStopped) {
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 发送前已停止")
+                aapsLogger.debug(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 发送前已停止")
                 t.insulin = 0.0
                 return false
             }
@@ -275,7 +299,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             val startTime = System.currentTimeMillis()
             while (!danaPump.bolusStopped && !start.failed) {
                 if (System.currentTimeMillis() - startTime > 15 * 1000L) {
-                    aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 超时")
+                    aapsLogger.error(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 超时")
                     start.failed = true
                     break
                 }
@@ -283,38 +307,52 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             }
 
             if (start.failed || danaPump.bolusStopForced) {
-                aapsLogger.error(LTag.PUMP, "大剂量尝试 $attempt: 执行失败")
+                aapsLogger.error(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 执行失败")
                 return false
             }
 
-            aapsLogger.debug(LTag.PUMP, "大剂量尝试 $attempt: 成功")
+            aapsLogger.debug(LTag.PUMP, "大剂量尝试第 $attemptCount 次: 成功")
             SystemClock.sleep(300)
             return true
         }
 
-        val firstAttemptSuccess = attemptBolus(1)
-        if (firstAttemptSuccess) {
-            danaPump.bolusingTreatment = null
-            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
-            return true
-        }
+        // 持续重试直到成功或用户停止
+        while (true) {
+            if (attemptBolus()) {
+                danaPump.bolusingTreatment = null
+                // 发送成功事件，包含尝试次数
+                rxBus.send(EventOverviewBolusProgress(
+                    EventOverviewBolusProgress.Status.COMPLETED,
+                    attempt = attemptCount,
+                    treatment = t
+                ))
+                commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok_with_attempts, attemptCount), null)
+                return true
+            }
 
-        aapsLogger.debug(LTag.PUMP, "首次尝试失败，开始第二次尝试...")
-        mSerialIOThread?.disconnect("首次失败后重试")
-        danaPump.bolusStopped = true
-        danaPump.bolusStopForced = false
+            // 检查是否用户已停止
+            if (BolusProgressData.stopPressed) {
+                danaPump.bolusingTreatment = null
+                commandQueue.readStatus(rh.gs(app.aaps.pump.danar.R.string.bolus_canceled), null)
+                return false
+            }
 
-        val secondAttemptSuccess = attemptBolus(2)
-        danaPump.bolusingTreatment = null
-        
-        if (secondAttemptSuccess) {
-            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
-        } else {
-            // 明确引用当前模块的strings资源
-            commandQueue.readStatus(rh.gs(app.aaps.pump.danar.R.string.bolus_failed), null)
+            // 失败后断开连接，准备下次重试
+            mSerialIOThread?.disconnect("第 $attemptCount 次尝试失败后重试")
+            danaPump.bolusStopped = true
+            danaPump.bolusStopForced = false
+
+            // 计算下次重试间隔（指数退避策略）
+            val nextInterval = (retryInterval * RETRY_INTERVAL_GROWTH).toLong().coerceAtMost(MAX_RETRY_INTERVAL)
+            aapsLogger.debug(LTag.PUMP, "将在 ${nextInterval}ms 后进行第 ${attemptCount + 1} 次尝试")
+            
+            // 等待重试间隔，期间检查是否用户停止
+            val waitEndTime = System.currentTimeMillis() + nextInterval
+            while (System.currentTimeMillis() < waitEndTime && !BolusProgressData.stopPressed) {
+                SystemClock.sleep(100)
+            }
+            retryInterval = nextInterval
         }
-        
-        return secondAttemptSuccess
     }
 
     override fun highTempBasal(percent: Int, durationInMinutes: Int): Boolean = false
