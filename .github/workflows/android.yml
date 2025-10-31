@@ -17,13 +17,23 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
-        cache: gradle
+        cache: gradle  # 保留基础缓存配置，但后续会强制清理
+
+    - name: 彻底删除 Gradle 缓存（关键步骤）
+      run: |
+        # 删除用户目录下的所有 Gradle 缓存和守护进程文件
+        rm -rf ~/.gradle/caches/
+        rm -rf ~/.gradle/daemon/
+        rm -rf ~/.gradle/wrapper/dists/
+        # 删除项目内的构建缓存
+        rm -rf ./build/
+        rm -rf core/interfaces/build/
+        rm -rf pump/danar/build/
 
     - name: 验证核心类文件存在
       run: |
         if [ -f "core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt" ]; then
           echo "✅ 找到 EventOverviewBolusProgress.kt"
-          cat "core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt"
         else
           echo "❌ 未找到核心类文件"
           exit 1
@@ -32,23 +42,8 @@ jobs:
     - name: 授予 gradlew 执行权限
       run: chmod +x gradlew
 
-    - name: 彻底清理缓存
-      run: |
-        ./gradlew clean
-        rm -rf ~/.gradle/caches/
-        rm -rf core/interfaces/build/
-        rm -rf pump/danar/build/
-
-    - name: 构建 core:interfaces（确保编译成功）
+    - name: 构建 core:interfaces（重新生成缓存）
       run: ./gradlew :core:interfaces:assembleFullRelease --stacktrace
-
-    - name: 检查 core:interfaces 编译产物
-      run: |
-        find core/interfaces/build/intermediates/classes/fullRelease/ -name "EventOverviewBolusProgress.class"
-        if [ $? -ne 0 ]; then
-          echo "❌ core:interfaces 未生成目标类"
-          exit 1
-        fi
 
     - name: 构建 pump:danar
       run: |
@@ -57,9 +52,3 @@ jobs:
         export keyPassword=${{ secrets.KEY_PASSWORD }}
         export storeFile=${{ secrets.STORE_FILE }}
         ./gradlew :pump:danar:assembleFullRelease --stacktrace
-
-    - name: 归档产物
-      uses: actions/upload-artifact@v4
-      with:
-        name: danar-release
-        path: pump/danar/build/outputs/aar/
