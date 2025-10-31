@@ -319,13 +319,13 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                     attempt = attemptCount,
                     treatment = t
                 ))
-                commandQueue.readStatus(rh.gs(R.string.bolus_ok_with_attempts, attemptCount), null)
+                commandQueue.readStatus(rh.gs(app.aaps.pump.danar.R.string.bolus_ok_with_attempts, attemptCount), null)
                 return true
             }
 
             if (BolusProgressData.stopPressed) {
                 danaPump.bolusingTreatment = null
-                commandQueue.readStatus(rh.gs(R.string.bolus_canceled), null)
+                commandQueue.readStatus(rh.gs(app.aaps.pump.danar.R.string.bolus_canceled), null)
                 return false
             }
 
