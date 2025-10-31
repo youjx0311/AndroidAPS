@@ -59,8 +59,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
     
-    // 记录上次接近每日限额通知时间
-    private var lastApproachingDailyLimit = 0L
+    // 明确重写父类成员并添加override修饰符
+    override var lastApproachingDailyLimit: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -325,8 +325,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         } else {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_failed), null)
-            // 发送失败通知
-            uiInteraction.addNotification(Notification.BOLUS_FAILED, rh.gs(R.string.bolus_failed), Notification.URGENT)
+            // 发送失败通知（使用正确的Notification枚举）
+            uiInteraction.addNotification(Notification.BOLUS_ERROR, rh.gs(R.string.bolus_failed), Notification.URGENT)
         }
         
         return secondAttemptSuccess
