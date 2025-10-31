@@ -310,8 +310,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         if (secondAttemptSuccess) {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         } else {
-            // 修正资源引用路径，直接使用当前模块的strings资源
-            commandQueue.readStatus(rh.gs(R.string.bolus_failed), null)
+            // 明确引用当前模块的strings资源
+            commandQueue.readStatus(rh.gs(app.aaps.pump.danar.R.string.bolus_failed), null)
         }
         
         return secondAttemptSuccess
