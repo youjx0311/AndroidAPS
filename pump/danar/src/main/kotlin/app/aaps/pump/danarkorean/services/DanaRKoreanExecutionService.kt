@@ -306,7 +306,6 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         // 首次尝试
         val firstAttemptSuccess = attemptBolus(1)
         if (firstAttemptSuccess) {
-            danaPump.bolusingTreatment = null
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
             return true
         }
@@ -319,17 +318,11 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
         // 第二次尝试
         val secondAttemptSuccess = attemptBolus(2)
-        danaPump.bolusingTreatment = null
-        
-        if (secondAttemptSuccess) {
-            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
-        } else {
-            // 完全移除所有可能的枚举/资源引用，仅保留基础逻辑
-            commandQueue.readStatus(rh.gs(R.string.bolus_failed), null)
+        if (!secondAttemptSuccess) {
+            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_failed), null)
         }
-        
         return secondAttemptSuccess
-    }
+        }
 
     override fun highTempBasal(percent: Int, durationInMinutes: Int): Boolean = false
 
