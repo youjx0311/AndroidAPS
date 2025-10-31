@@ -304,7 +304,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 // 明确使用完整类名 + 资源ID
                 uiInteraction.addNotification(
                     Notification.BOLUS_FAILED,
-                    rh.gs(R.string.bolus_failed) + "（重试$MAX_RETRY_COUNT次失败：$failReason）",
+                    rh.gs(R.string.bolus_failed) + "（重试" + MAX_RETRY_COUNT + "次失败：" + failReason + "）",
                     Notification.URGENT
                 )
             }
