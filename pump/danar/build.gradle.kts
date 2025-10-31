@@ -13,13 +13,10 @@ android {
 
 dependencies {
     implementation(project(":core:data"))
+    // 修正核心依赖配置（符合 Kotlin DSL 语法）
     implementation(project(":core:interfaces")) {
-        // 修正 Kotlin DSL 语法：使用 exclude(mapOf(...))
-        exclude(mapOf("group" to "com.android.support")
-        isTransitive = true // Kotlin DSL 中使用 isTransitive
-        version {
-            strictly(project.version.toString()) // 明确转换为字符串
-        }
+        exclude(group = "com.android.support") // 正确的 exclude 语法
+        isTransitive = true // 依赖传递性配置
     }
     implementation(project(":core:keys"))
     implementation(project(":core:objects"))
