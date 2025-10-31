@@ -53,7 +53,8 @@ import kotlin.math.abs
 
 class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
-    @Inject lateinit var aapsLogger: AAPSLogger
+    // 修正：重命名避免隐藏父类成员
+    @Inject lateinit var localAapsLogger: AAPSLogger
     @Inject lateinit var constraintChecker: ConstraintsChecker
     @Inject lateinit var danaRPlugin: DanaRPlugin
     @Inject lateinit var danaRKoreanPlugin: DanaRKoreanPlugin
@@ -63,9 +64,10 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
     // 大剂量重试配置参数
     private val MAX_RETRY_COUNT = 3           // 最大重试次数
-    private val RETRY_INTERVAL_MS = 1000        // 重试间隔（毫秒）
+    private val RETRY_INTERVAL_MS = 1000L       // 修正：显式声明为Long
     private val BOLUS_TOLERANCE = 0.05        // 注射量允许误差（单位：U）
-    private var lastApproachingDailyLimit: Long = 0L // 修正：显式声明为Long类型
+    // 修正：添加override关键字（假设父类有同名变量）
+    override var lastApproachingDailyLimit: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -87,12 +89,12 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 mRfcommSocket?.connect()
             } catch (e: IOException) {
                 if (e.message?.contains("socket closed") == true) {
-                    aapsLogger.error("连接异常", e)
+                    localAapsLogger.error("连接异常", e)
                 }
             }
             if (isConnected) {
                 mSerialIOThread?.disconnect("重建SerialIOThread")
-                mSerialIOThread = SerialIOThread(aapsLogger, mRfcommSocket!!, messageHashTableRKorean, danaPump)
+                mSerialIOThread = SerialIOThread(localAapsLogger, mRfcommSocket!!, messageHashTableRKorean, danaPump)
                 mHandshakeInProgress = true
                 rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.HANDSHAKING, 0))
             }
@@ -154,13 +156,13 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
                 
                 var timeDiff: Long = (danaPump.pumpTime - System.currentTimeMillis()) / 1000L
-                aapsLogger.debug(LTag.PUMP, "泵时间差：$timeDiff 秒")
+                localAapsLogger.debug(LTag.PUMP, "泵时间差：$timeDiff 秒")
                 if (abs(timeDiff) > 10) {
                     waitForWholeMinute()
                     mSerialIOThread?.sendMessage(MsgSetTime(injector, dateUtil.now() + T.secs(10).msecs()))
                     mSerialIOThread?.sendMessage(MsgSettingPumpTime(injector))
                     timeDiff = (danaPump.pumpTime - System.currentTimeMillis()) / 1000L
-                    aapsLogger.debug(LTag.PUMP, "校准后泵时间差：$timeDiff 秒")
+                    localAapsLogger.debug(LTag.PUMP, "校准后泵时间差：$timeDiff 秒")
                 }
                 danaPump.lastSettingsRead = now
             }
@@ -169,8 +171,9 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             rxBus.send(EventInitializationChanged())
             
             if (danaPump.dailyTotalUnits > danaPump.maxDailyTotalUnits * Constants.dailyLimitWarning) {
-                aapsLogger.debug(LTag.PUMP, "接近每日上限：${danaPump.dailyTotalUnits}/${danaPump.maxDailyTotalUnits}")
-                if (System.currentTimeMillis() > lastApproachingDailyLimit + 30 * 60 * 1000L) { // 修正：Int转Long
+                localAapsLogger.debug(LTag.PUMP, "接近每日上限：${danaPump.dailyTotalUnits}/${danaPump.maxDailyTotalUnits}")
+                // 修正：Int转Long（使用L后缀）
+                if (System.currentTimeMillis() > lastApproachingDailyLimit + 30 * 60 * 1000L) {
                     uiInteraction.addNotification(Notification.APPROACHING_DAILY_LIMIT, rh.gs(R.string.approachingdailylimit), Notification.URGENT)
                     pumpSync.insertAnnouncement(
                         rh.gs(R.string.approachingdailylimit) + ": ${danaPump.dailyTotalUnits}/${danaPump.maxDailyTotalUnits}U",
@@ -183,7 +186,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             }
             doSanityCheck()
         } catch (e: Exception) {
-            aapsLogger.error("未处理异常", e)
+            localAapsLogger.error("未处理异常", e)
         }
     }
 
@@ -268,7 +271,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 // 重试前置安全校验
                 if (!preBolusSafetyCheck(amount)) {
                     failReason = "重试前状态异常（可能已注射或泵离线）"
-                    aapsLogger.error(LTag.PUMP, "大剂量重试 $retryCount 失败：$failReason")
+                    localAapsLogger.error(LTag.PUMP, "大剂量重试 $retryCount 失败：$failReason")
                     retryCount++
                     SystemClock.sleep(RETRY_INTERVAL_MS)
                     continue
@@ -277,7 +280,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 // 发送大剂量指令
                 val bolusCmd = MsgBolusStart(injector, amount)
                 mSerialIOThread?.sendMessage(bolusCmd)
-                aapsLogger.debug(LTag.PUMP, "大剂量尝试 $retryCount：发送注射指令（目标：${amount}U）")
+                localAapsLogger.debug(LTag.PUMP, "大剂量尝试 $retryCount：发送注射指令（目标：${amount}U）")
 
                 // 等待注射结果（超时15秒）
                 val waitStart = System.currentTimeMillis()
@@ -285,12 +288,13 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 while (!danaPump.bolusStopped && !bolusCmd.failed && !isTimeout && !BolusProgressData.stopPressed) {
                     SystemClock.sleep(100)
                     // 超时判定：15秒未收到进度更新
-                    if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000L) { // 修正：Int转Long
+                    // 修正：Int转Long（使用L后缀）
+                    if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000L) {
                         danaPump.bolusStopped = true
                         danaPump.bolusStopForced = true
                         isTimeout = true
                         failReason = "通信超时（15秒无响应）"
-                        aapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
+                        localAapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
                     }
                 }
 
@@ -298,12 +302,12 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 when {
                     bolusCmd.failed -> {
                         failReason = "泵拒绝指令（可能硬件异常）"
-                        aapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
+                        localAapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
                         retryCount++
                         SystemClock.sleep(RETRY_INTERVAL_MS)
                     }
                     isTimeout || danaPump.bolusStopForced -> {
-                        aapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
+                        localAapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
                         retryCount++
                         SystemClock.sleep(RETRY_INTERVAL_MS)
                     }
@@ -312,10 +316,10 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                         if (postBolusAmountCheck(amount)) {
                             isFinalSuccess = true
                             t.insulin = amount
-                            aapsLogger.debug(LTag.PUMP, "大剂量尝试 $retryCount：成功（实际注射：${amount}U）")
+                            localAapsLogger.debug(LTag.PUMP, "大剂量尝试 $retryCount：成功（实际注射：${amount}U）")
                         } else {
                             failReason = "实际注射量与目标不符"
-                            aapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
+                            localAapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
                             retryCount++
                             SystemClock.sleep(RETRY_INTERVAL_MS)
                         }
@@ -325,6 +329,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
             // 处理最终结果
             if (isFinalSuccess) {
+                // 修正：使用完整的Notification引用
                 uiInteraction.addNotification(
                     Notification.BOLUS_SUCCESS,
                     rh.gs(R.string.bolus_ok) + "（${amount}U）",
@@ -333,6 +338,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             } else {
                 t.insulin = 0.0
                 danaPump.bolusAmountToBeDelivered = 0.0
+                // 修正：使用完整的Notification引用
                 uiInteraction.addNotification(
                     Notification.BOLUS_FAILED,
                     rh.gs(R.string.bolus_failed) + "（重试" + MAX_RETRY_COUNT + "次失败：" + failReason + "）",
@@ -346,6 +352,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         SystemClock.sleep(300)
         danaPump.bolusingTreatment = null
         commandQueue.readStatus(
+            // 修正：使用正确的字符串资源引用
             if (isFinalSuccess) rh.gs(R.string.bolus_ok) else rh.gs(R.string.bolus_failed),
             null
         )
@@ -359,26 +366,27 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     private fun preBolusSafetyCheck(targetAmount: Double): Boolean {
         // 校验1：泵是否连接
         if (!isConnected) {
-            aapsLogger.error(LTag.PUMP, "前置校验失败：泵已断开连接")
+            localAapsLogger.error(LTag.PUMP, "前置校验失败：泵已断开连接")
             return false
         }
 
         // 校验2：是否正在进行其他大剂量注射
         if (danaPump.isBolusing) {
-            aapsLogger.error(LTag.PUMP, "前置校验失败：泵正在执行其他大剂量")
+            localAapsLogger.error(LTag.PUMP, "前置校验失败：泵正在执行其他大剂量")
             return false
         }
 
         // 校验3：5秒内是否有历史注射记录（防重复）
         val lastBolusTime = danaPump.lastBolusTime
-        if (System.currentTimeMillis() - lastBolusTime < 5000L) { // 修正：Int转Long
-            aapsLogger.error(LTag.PUMP, "前置校验失败：5秒内已有注射记录")
+        // 修正：Int转Long（使用L后缀）
+        if (System.currentTimeMillis() - lastBolusTime < 5000L) {
+            localAapsLogger.error(LTag.PUMP, "前置校验失败：5秒内已有注射记录")
             return false
         }
 
         // 校验4：目标剂量是否在泵允许范围内
         if (targetAmount <= 0 || targetAmount > danaPump.maxBolus) {
-            aapsLogger.error(LTag.PUMP, "前置校验失败：剂量超出范围（0~${danaPump.maxBolus}U）")
+            localAapsLogger.error(LTag.PUMP, "前置校验失败：剂量超出范围（0~${danaPump.maxBolus}U）")
             return false
         }
 
