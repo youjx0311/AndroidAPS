@@ -111,7 +111,7 @@ class DanaPump @Inject constructor(
     var batteryRemaining = 0
     var bolusBlocked = false
     var lastBolusTime: Long = 0
-    var lastBolusAmount: Double? = null  // 新增：记录上次大剂量实际注射量
+    var lastBolusAmount: Double = 0.0  // 修正：从可空改为非空，默认0.0
     var currentBasal = 0.0
 
     /*
