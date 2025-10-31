@@ -324,8 +324,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         if (secondAttemptSuccess) {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         } else {
+            // 完全移除可能导致编译错误的逻辑，仅保留基础状态读取
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_failed), null)
-            // 移除通知逻辑，避免枚举引用错误
         }
         
         return secondAttemptSuccess
