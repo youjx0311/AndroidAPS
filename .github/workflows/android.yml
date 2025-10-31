@@ -8,9 +8,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: set up JDK 21
@@ -22,13 +20,18 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+    
+    # 新增：强制清理缓存和构建产物
+    - name: Clean project and cache
+      run: ./gradlew clean && rm -rf ~/.gradle/caches/
+    
     - name: Build with Gradle
       run: |
         export storePassword=${{ secrets.STORE_PASSWORD }}
         export keyAlias=${{ secrets.KEY_ALIAS }}
         export keyPassword=${{ secrets.KEY_PASSWORD }}
         export storeFile=${{ secrets.STORE_FILE }}
-        ./gradlew assembleFullRelease
+        ./gradlew :pump:danar:assembleFullRelease --stacktrace --info  # 明确指定模块并输出详细日志
     - name: Archive production artifacts
       uses: actions/upload-artifact@v4
       with:
