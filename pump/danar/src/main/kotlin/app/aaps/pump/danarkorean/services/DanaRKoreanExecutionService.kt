@@ -19,6 +19,7 @@ import app.aaps.core.interfaces.rx.events.EventInitializationChanged
 import app.aaps.core.interfaces.rx.events.EventOverviewBolusProgress
 import app.aaps.core.interfaces.rx.events.EventProfileSwitchChanged
 import app.aaps.core.interfaces.rx.events.EventPumpStatusChanged
+import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.pump.dana.R
 import app.aaps.pump.dana.events.EventDanaRNewStatus
 import app.aaps.pump.danar.DanaRPlugin
@@ -66,6 +67,40 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     override fun onCreate() {
         super.onCreate()
         mBinder = LocalBinder()
+    }
+
+        // 示例：发送"尝试中"状态事件
+    private fun sendBolusAttempting(insulin: Double, carbs: Int) {
+        val treatment = EventOverviewBolusProgress.Treatment(
+            insulin = insulin,
+            carbs = carbs,
+            isSMB = false,
+            id = System.currentTimeMillis()
+        )
+        RxBus.send(
+            EventOverviewBolusProgress.apply {
+                status = EventOverviewBolusProgress.Status.ATTEMPTING.name
+                this.t = treatment
+                percent = 0
+            }
+        )
+    }
+
+    // 示例：发送"完成"状态事件
+    private fun sendBolusCompleted(insulin: Double, carbs: Int) {
+        val treatment = EventOverviewBolusProgress.Treatment(
+            insulin = insulin,
+            carbs = carbs,
+            isSMB = false,
+            id = System.currentTimeMillis()
+        )
+        RxBus.send(
+            EventOverviewBolusProgress.apply {
+                status = EventOverviewBolusProgress.Status.COMPLETED.name
+                this.t = treatment
+                percent = 100
+            }
+        )
     }
 
     @SuppressLint("MissingPermission") 
