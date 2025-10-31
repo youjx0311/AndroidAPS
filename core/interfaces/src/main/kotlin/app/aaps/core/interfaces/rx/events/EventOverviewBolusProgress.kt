@@ -1,6 +1,6 @@
+// core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt
 package app.aaps.core.interfaces.rx.events
 
-// 正确继承 Event 基类，无重复声明
 object EventOverviewBolusProgress : Event() {
 
     data class Treatment(
