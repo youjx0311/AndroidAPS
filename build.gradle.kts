@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.*
 
 // 顶层构建文件，配置所有子项目/模块的通用设置
@@ -31,41 +32,43 @@ allprojects {
         maven("https://jitpack.io")
     }
 
-    // 配置 Kotlin 编译选项（统一 JVM 目标版本）
+    // 配置 Kotlin 编译选项（修正 JVM 目标版本类型）
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions {
             freeCompilerArgs.addAll(
                 "-opt-in=kotlin.RequiresOptIn",
                 "-opt-in=kotlin.ExperimentalUnsignedTypes",
-                "-Xjvm-default=all" // 支持 @JvmDefault 注解
+                "-Xjvm-default=all"
             )
-            jvmTarget.set("21") // 与 JDK 21 匹配
+            // 关键修正：JvmTarget 需用枚举值，而非字符串
+            jvmTarget.set(JvmTarget.JVM_21)
         }
     }
 
-    // 配置 Java 编译选项（与 Kotlin 版本保持一致）
+    // 配置 Java 编译选项（修正参数类型和集合写法）
     gradle.projectsEvaluated {
         tasks.withType<JavaCompile>().configureEach {
             options.apply {
+                // 修正：addAll 接收集合参数
                 compilerArgs.addAll(
-                    "-Xlint:deprecation", // 显示 deprecation 警告
-                    "-Xlint:unchecked"    // 显示 unchecked 警告
+                    listOf(
+                        "-Xlint:deprecation",
+                        "-Xlint:unchecked"
+                    )
                 )
-                sourceCompatibility = JavaVersion.VERSION_21
-                targetCompatibility = JavaVersion.VERSION_21
+                // 修正：sourceCompatibility/targetCompatibility 接收 String 类型的版本号
+                sourceCompatibility = "21"
+                targetCompatibility = "21"
             }
         }
     }
 
-    // 应用通用插件
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "jacoco")
 }
 
-// 应用代码覆盖率报告聚合配置
 apply(from = "jacoco_aggregation.gradle.kts")
 
-// 注册 clean 任务（删除根项目构建目录）
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
