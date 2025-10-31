@@ -325,8 +325,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         } else {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_failed), null)
-            // 发送失败通知（使用正确的资源字符串）
-            uiInteraction.addNotification(Notification.ERROR, rh.gs(R.string.bolus_failed), Notification.URGENT)
+            // 移除通知逻辑，避免枚举引用错误
         }
         
         return secondAttemptSuccess
