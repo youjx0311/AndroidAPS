@@ -9,7 +9,7 @@ import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
-import app.aaps.core.interfaces.notifications.Notification  // 强制导入！
+import app.aaps.core.interfaces.notifications.Notification  // 强制导入（关键）
 import app.aaps.core.interfaces.profile.Profile
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.pump.BolusProgressData
@@ -20,7 +20,7 @@ import app.aaps.core.interfaces.rx.events.EventInitializationChanged
 import app.aaps.core.interfaces.rx.events.EventOverviewBolusProgress
 import app.aaps.core.interfaces.rx.events.EventProfileSwitchChanged
 import app.aaps.core.interfaces.rx.events.EventPumpStatusChanged
-import app.aaps.pump.dana.R  // 强制导入！
+import app.aaps.pump.dana.R  // 强制导入资源类（关键）
 import app.aaps.pump.dana.events.EventDanaRNewStatus
 import app.aaps.pump.danar.DanaRPlugin
 import app.aaps.pump.danar.SerialIOThread
@@ -61,9 +61,12 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     @Inject lateinit var messageHashTableRKorean: MessageHashTableRKorean
     @Inject lateinit var profileFunction: ProfileFunction
 
+    // 常量定义（避免魔法值）
     private val MAX_RETRY_COUNT = 3
     private val RETRY_INTERVAL_MS = 1000L
     private val BOLUS_TOLERANCE = 0.05
+    private val BOLUS_SUCCESS_NOTIFICATION_ID = 1001  // 替代Notification.BOLUS_SUCCESS
+    private val BOLUS_FAILED_NOTIFICATION_ID = 1002   // 替代Notification.BOLUS_FAILED
     private var localLastApproachingDailyLimit: Long = 0L
 
     override fun onCreate() {
@@ -101,6 +104,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
     override fun getPumpStatus() {
         try {
+            // 资源调用使用项目标准写法 rh.gs(R.string.xxx)
             rxBus.send(EventPumpStatusChanged(rh.gs(R.string.gettingpumpstatus)))
             val statusBasicMsg = MsgStatusBasic_k(injector)
             val tempStatusMsg = MsgStatusTempBasal(injector)
@@ -291,20 +295,19 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                     }
                 }
             }
+            // 关键修复：用自定义ID替代未识别的Notification.BOLUS_SUCCESS/FAILED
             if (isFinalSuccess) {
-                // 明确使用完整类名 + 资源ID（AndroidAPS 标准写法）
                 uiInteraction.addNotification(
-                    Notification.BOLUS_SUCCESS,
-                    rh.gs(R.string.bolus_ok) + "（${amount}U）",
+                    BOLUS_SUCCESS_NOTIFICATION_ID,  // 自定义通知ID
+                    rh.gs(R.string.bolus_ok) + "（${amount}U）",  // 资源正确调用
                     Notification.NORMAL
                 )
             } else {
                 t.insulin = 0.0
                 danaPump.bolusAmountToBeDelivered = 0.0
-                // 明确使用完整类名 + 资源ID（AndroidAPS 标准写法）
                 uiInteraction.addNotification(
-                    Notification.BOLUS_FAILED,
-                    rh.gs(R.string.bolus_failed) + "（重试" + MAX_RETRY_COUNT + "次失败：" + failReason + "）",
+                    BOLUS_FAILED_NOTIFICATION_ID,  // 自定义通知ID
+                    rh.gs(R.string.bolus_failed) + "（重试$MAX_RETRY_COUNT次失败：$failReason）",  // 资源正确调用
                     Notification.URGENT
                 )
             }
