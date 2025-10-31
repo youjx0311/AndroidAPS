@@ -248,6 +248,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             bolusStopForced = false
             bolusAmountToBeDelivered = amount
             bolusProgressLastTimeStamp = System.currentTimeMillis()
+            isBolusing = true // 标记正在注射
         }
 
         var isFinalSuccess = false
@@ -294,7 +295,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 // 处理单次尝试结果
                 when {
                     bolusCmd.failed -> {
-                        failReason = "泵拒绝指令（可能硬件件异常）"
+                        failReason = "泵拒绝指令（可能硬件异常）"
                         aapsLogger.error(LTag.PUMP, "大剂量尝试 $retryCount：$failReason")
                         retryCount++
                         SystemClock.sleep(RETRY_INTERVAL_MS)
@@ -332,17 +333,18 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 danaPump.bolusAmountToBeDelivered = 0.0
                 uiInteraction.addNotification(
                     Notification.BOLUS_FAILED,
-                    rh.gs(R.string.bolus_failed) + "（重试$MAX_RETRY_COUNT次失败：$failReason）",
+                    rh.gs(R.string.bolus_failed) + "（重试" + MAX_RETRY_COUNT + "次失败：" + failReason + "）",
                     Notification.URGENT
                 )
             }
         }
 
         // 清理状态并同步泵信息
+        danaPump.isBolusing = false // 重置注射状态
         SystemClock.sleep(300)
         danaPump.bolusingTreatment = null
         commandQueue.readStatus(
-            if (isFinalSuccess) rh.gs(app.aaps.core.ui.R.string.bolus_ok) else rh.gs(R.string.bolus_failed),
+            if (isFinalSuccess) rh.gs(R.string.bolus_ok) else rh.gs(R.string.bolus_failed),
             null
         )
 
@@ -374,7 +376,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
         // 校验4：目标剂量是否在泵允许范围内
         if (targetAmount <= 0 || targetAmount > danaPump.maxBolus) {
-            aapsLogger.error(LTag.PUMP, "前置校验失败：剂量超出超出范围（0~${danaPump.maxBolus}U）")
+            aapsLogger.error(LTag.PUMP, "前置校验失败：剂量超出范围（0~${danaPump.maxBolus}U）")
             return false
         }
 
@@ -389,7 +391,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         mSerialIOThread?.sendMessage(MsgStatusBolusExtended(injector))
         SystemClock.sleep(500) // 等待响应
 
-        // 读取泵端实际注射量（根据据实际字段调整）
+        // 读取泵端实际注射量（根据实际字段调整）
         val actualAmount = danaPump.lastBolusAmount ?: 0.0
 
         // 允许微小误差
@@ -406,7 +408,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         val basal: Array<Double> = danaPump.buildDanaRProfileRecord(profile)
         val msgSet = MsgSetSingleBasalProfile(injector, basal)
         mSerialIOThread?.sendMessage(msgSet)
-        danaPump.lastSettingsRead = 0 // 强制制读取完整设置
+        danaPump.lastSettingsRead = 0 // 强制读取完整设置
         getPumpStatus()
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
         return true
