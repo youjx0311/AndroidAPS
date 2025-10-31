@@ -21,7 +21,7 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    - name: Clean all caches (彻底清理)
+    - name: Clean all caches
       run: |
         ./gradlew clean
         rm -rf ~/.gradle/caches/
@@ -29,11 +29,8 @@ jobs:
         rm -rf core/interfaces/build/
         rm -rf pump/danar/build/
     
-    - name: Build core:interfaces (强制编译并输出结果)
-      run: |
-        ./gradlew :core:interfaces:assembleDebug --stacktrace
-        # 检查 core:interfaces 的构建产物是否存在
-        ls -l core/interfaces/build/libs/
+    - name: Build core:interfaces (确保编译成功)
+      run: ./gradlew :core:interfaces:assembleDebug --stacktrace
     
     - name: Build pump:danar (依赖已编译的 core:interfaces)
       run: |
