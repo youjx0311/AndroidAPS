@@ -13,7 +13,14 @@ android {
 
 dependencies {
     implementation(project(":core:data"))
-    implementation(project(":core:interfaces"))
+    implementation(project(":core:interfaces")) {
+        // 强制使用最新构建，避免缓存干扰
+        exclude group: "com.android.support"
+        transitive = true
+        version {
+            strictly project.version
+        }
+    }
     implementation(project(":core:keys"))
     implementation(project(":core:objects"))
     implementation(project(":core:utils"))
