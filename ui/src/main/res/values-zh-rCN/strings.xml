@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="bolus_failed">大剂量执行失败</string>
     <string name="bolus_constraint_applied">大剂量约束条件应用了</string>
     <string name="carbs_constraint_applied">碳水化合物约束条件应用了</string>
     <string name="temp_target_short">临时目标</string>
