@@ -7,6 +7,7 @@ import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.pump.defs.PumpType
 import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
+import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.notifications.Notification
 import app.aaps.core.interfaces.profile.Profile
@@ -52,6 +53,7 @@ import kotlin.math.abs
 
 class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
 
+    @Inject lateinit var aapsLogger: AAPSLogger
     @Inject lateinit var constraintChecker: ConstraintsChecker
     @Inject lateinit var danaRPlugin: DanaRPlugin
     @Inject lateinit var danaRKoreanPlugin: DanaRKoreanPlugin
@@ -63,7 +65,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
     private val MAX_RETRY_COUNT = 3           // 最大重试次数
     private val RETRY_INTERVAL_MS = 1000        // 重试间隔（毫秒）
     private val BOLUS_TOLERANCE = 0.05        // 注射量允许误差（单位：U）
-    private var lastApproachingDailyLimit = 0L // 上次接近每日上限提醒时间
+    private var lastApproachingDailyLimit: Long = 0L // 修正：显式声明为Long类型
 
     override fun onCreate() {
         super.onCreate()
@@ -168,7 +170,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             
             if (danaPump.dailyTotalUnits > danaPump.maxDailyTotalUnits * Constants.dailyLimitWarning) {
                 aapsLogger.debug(LTag.PUMP, "接近每日上限：${danaPump.dailyTotalUnits}/${danaPump.maxDailyTotalUnits}")
-                if (System.currentTimeMillis() > lastApproachingDailyLimit + 30 * 60 * 1000) {
+                if (System.currentTimeMillis() > lastApproachingDailyLimit + 30 * 60 * 1000L) { // 修正：Int转Long
                     uiInteraction.addNotification(Notification.APPROACHING_DAILY_LIMIT, rh.gs(R.string.approachingdailylimit), Notification.URGENT)
                     pumpSync.insertAnnouncement(
                         rh.gs(R.string.approachingdailylimit) + ": ${danaPump.dailyTotalUnits}/${danaPump.maxDailyTotalUnits}U",
@@ -283,7 +285,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 while (!danaPump.bolusStopped && !bolusCmd.failed && !isTimeout && !BolusProgressData.stopPressed) {
                     SystemClock.sleep(100)
                     // 超时判定：15秒未收到进度更新
-                    if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000) {
+                    if (System.currentTimeMillis() - danaPump.bolusProgressLastTimeStamp > 15 * 1000L) { // 修正：Int转Long
                         danaPump.bolusStopped = true
                         danaPump.bolusStopForced = true
                         isTimeout = true
@@ -368,8 +370,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         }
 
         // 校验3：5秒内是否有历史注射记录（防重复）
-        val lastBolusTime = danaPump.lastBolusTime ?: 0
-        if (System.currentTimeMillis() - lastBolusTime < 5000) {
+        val lastBolusTime = danaPump.lastBolusTime
+        if (System.currentTimeMillis() - lastBolusTime < 5000L) { // 修正：Int转Long
             aapsLogger.error(LTag.PUMP, "前置校验失败：5秒内已有注射记录")
             return false
         }
@@ -391,8 +393,8 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         mSerialIOThread?.sendMessage(MsgStatusBolusExtended(injector))
         SystemClock.sleep(500) // 等待响应
 
-        // 读取泵端实际注射量（根据实际字段调整）
-        val actualAmount = danaPump.lastBolusAmount ?: 0.0
+        // 读取泵端实际注射量（已修正为非空类型）
+        val actualAmount = danaPump.lastBolusAmount
 
         // 允许微小误差
         return abs(actualAmount - targetAmount) <= BOLUS_TOLERANCE
