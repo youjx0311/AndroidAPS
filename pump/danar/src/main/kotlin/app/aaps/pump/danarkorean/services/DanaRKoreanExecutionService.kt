@@ -9,7 +9,7 @@ import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
-import app.aaps.core.interfaces.notifications.Notification  // 必须导入！
+import app.aaps.core.interfaces.notifications.Notification  // 强制导入！
 import app.aaps.core.interfaces.profile.Profile
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.pump.BolusProgressData
@@ -20,7 +20,7 @@ import app.aaps.core.interfaces.rx.events.EventInitializationChanged
 import app.aaps.core.interfaces.rx.events.EventOverviewBolusProgress
 import app.aaps.core.interfaces.rx.events.EventProfileSwitchChanged
 import app.aaps.core.interfaces.rx.events.EventPumpStatusChanged
-import app.aaps.pump.dana.R  // 必须导入！
+import app.aaps.pump.dana.R  // 强制导入！
 import app.aaps.pump.dana.events.EventDanaRNewStatus
 import app.aaps.pump.danar.DanaRPlugin
 import app.aaps.pump.danar.SerialIOThread
@@ -292,17 +292,19 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
             }
             if (isFinalSuccess) {
+                // 明确使用完整类名+资源ID
                 uiInteraction.addNotification(
-                    Notification.BOLUS_SUCCESS,  // 必须用完整类名
-                    rh.gs(R.string.bolus_ok),    // 必须确保strings.xml存在
+                    Notification.BOLUS_SUCCESS,
+                    rh.getString(R.string.bolus_ok) + "（${amount}U）",
                     Notification.NORMAL
                 )
             } else {
                 t.insulin = 0.0
                 danaPump.bolusAmountToBeDelivered = 0.0
+                // 明确使用完整类名+资源ID
                 uiInteraction.addNotification(
-                    Notification.BOLUS_FAILED,  // 必须用完整类名
-                    rh.gs(R.string.bolus_failed), // 必须确保strings.xml存在
+                    Notification.BOLUS_FAILED,
+                    rh.getString(R.string.bolus_failed) + "（重试$MAX_RETRY_COUNT次失败：$failReason）",
                     Notification.URGENT
                 )
             }
@@ -311,7 +313,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
         SystemClock.sleep(300)
         danaPump.bolusingTreatment = null
         commandQueue.readStatus(
-            if (isFinalSuccess) rh.gs(R.string.bolus_ok) else rh.gs(R.string.bolus_failed),
+            if (isFinalSuccess) rh.getString(R.string.bolus_ok) else rh.getString(R.string.bolus_failed),
             null
         )
         return isFinalSuccess
