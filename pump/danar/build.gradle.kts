@@ -14,11 +14,11 @@ android {
 dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:interfaces")) {
-        // 强制使用最新构建，避免缓存干扰
-        exclude group: "com.android.support"
-        transitive = true
+        // 修正 Kotlin DSL 语法：使用 exclude(mapOf(...))
+        exclude(mapOf("group" to "com.android.support")
+        isTransitive = true // Kotlin DSL 中使用 isTransitive
         version {
-            strictly project.version
+            strictly(project.version.toString()) // 明确转换为字符串
         }
     }
     implementation(project(":core:keys"))
