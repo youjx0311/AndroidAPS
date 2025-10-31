@@ -49,5 +49,5 @@ jobs:
         export storePassword=${{ secrets.STORE_PASSWORD }}
         export keyAlias=${{ secrets.KEY_ALIAS }}
         export keyPassword=${{ secrets.KEY_PASSWORD }}
-        export storeFile=${{ secrets secrets.STORE_FILE }}
+        export storeFile=${{ secrets.STORE_FILE }}
         ./gradlew :pump:danar:assembleFullRelease --stacktrace
