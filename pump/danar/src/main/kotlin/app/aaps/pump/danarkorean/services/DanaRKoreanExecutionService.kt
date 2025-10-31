@@ -292,7 +292,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
                 }
             }
             if (isFinalSuccess) {
-                // 明确使用完整类名 + 资源ID
+                // 明确使用完整类名 + 资源ID（AndroidAPS 标准写法）
                 uiInteraction.addNotification(
                     Notification.BOLUS_SUCCESS,
                     rh.gs(R.string.bolus_ok) + "（${amount}U）",
@@ -301,7 +301,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             } else {
                 t.insulin = 0.0
                 danaPump.bolusAmountToBeDelivered = 0.0
-                // 明确使用完整类名 + 资源ID
+                // 明确使用完整类名 + 资源ID（AndroidAPS 标准写法）
                 uiInteraction.addNotification(
                     Notification.BOLUS_FAILED,
                     rh.gs(R.string.bolus_failed) + "（重试" + MAX_RETRY_COUNT + "次失败：" + failReason + "）",
