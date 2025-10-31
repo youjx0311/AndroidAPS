@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="bolus_failed">大剂量执行失败</string>
+  <string name="bolus_ok_with_attempts">大剂量注射成功（共尝试 %d 次）</string>
+  <string name="bolus_canceled">大剂量注射已取消</string>
 </resources>
