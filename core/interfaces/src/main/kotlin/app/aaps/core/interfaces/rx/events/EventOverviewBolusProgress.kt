@@ -1,20 +1,8 @@
-// core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt
 package app.aaps.core.interfaces.rx.events
 
 object EventOverviewBolusProgress : Event() {
 
-    data class Treatment(
-        var insulin: Double = 0.0,
-        var carbs: Int = 0,
-        var isSMB: Boolean,
-        var id: Long
-    )
-
-    enum class Status {
-        ATTEMPTING,
-        COMPLETED,
-        STOPPED
-    }
+    data class Treatment(var insulin: Double = 0.0, var carbs: Int = 0, var isSMB: Boolean, var id: Long)
 
     var status = ""
     var t: Treatment? = null
