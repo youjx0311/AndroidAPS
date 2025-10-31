@@ -1,5 +1,6 @@
-name: Android CI
+name: Android 模块构建流程
 
+# 触发条件：推送到 master 分支或提交 PR 到 master 分支时执行
 on:
   push:
     branches: [ "master" ]
@@ -8,46 +9,55 @@ on:
 
 jobs:
   build:
+    # 运行环境：使用最新的 Ubuntu 系统
     runs-on: ubuntu-latest
+
+    # 步骤：按顺序执行的操作
     steps:
-      - uses: actions/checkout@v4
+      # 步骤1：拉取代码仓库到工作目录
+      - name: 拉取代码
+        uses: actions/checkout@v4  # 官方 action，用于检出代码
 
-      - name: 设置 JDK 21
-        uses: actions/setup-java@v4
+      # 步骤2：配置 Java 环境（Android 构建必需）
+      - name: 配置 JDK 21
+        uses: actions/setup-java@v4  # 官方 action，用于设置 Java
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: gradle
+          java-version: '21'         # 指定 Java 版本（匹配项目需求）
+          distribution: 'temurin'    # 使用 Adoptium Temurin 发行版
+          cache: gradle              # 缓存 Gradle 依赖，加速后续构建
 
-      - name: 彻底清理缓存
+      # 步骤3：清理缓存和旧构建产物（避免干扰）
+      - name: 清理缓存和构建目录
         run: |
-          ./gradlew clean
+          # 清理 Gradle 缓存（解决依赖冲突或损坏问题）
           rm -rf ~/.gradle/caches/
           rm -rf ~/.gradle/daemon/
-          rm -rf ~/.gradle/wrapper/dists/
-          rm -rf ./build/
+          # 清理项目内的构建产物
+          ./gradlew clean
           rm -rf core/interfaces/build/
           rm -rf pump/danar/build/
 
-      - name: 验证核心类文件存在
-        run: |
-          if [ -f "core/interfaces/src/main/kotlin/app/aaps/core/interfaces/rx/events/EventOverviewBolusProgress.kt" ]; then
-            echo "✅ 找到 EventOverviewBolusProgress.kt"
-          else
-            echo "❌ 未找到核心类文件"
-            exit 1
-          fi
-
-      - name: 授予 gradlew 执行权限
-        run: chmod +x gradlew
-
-      - name: 构建 core:interfaces（重新生成缓存）
+      # 步骤4：先构建基础模块 core:interfaces
+      - name: 构建 core:interfaces 模块
         run: ./gradlew :core:interfaces:assembleFullRelease --stacktrace
+        # --stacktrace 用于输出详细错误日志，方便排查问题
 
-      - name: 构建 pump:danar
+      # 步骤5：再构建依赖模块 pump:danar（仅在 core 构建成功后执行）
+      - name: 构建 pump:danar 模块
         run: |
+          # 若需要签名，导入密钥（根据项目是否需要签名配置）
           export storePassword=${{ secrets.STORE_PASSWORD }}
           export keyAlias=${{ secrets.KEY_ALIAS }}
           export keyPassword=${{ secrets.KEY_PASSWORD }}
           export storeFile=${{ secrets.STORE_FILE }}
+          # 执行构建命令
           ./gradlew :pump:danar:assembleFullRelease --stacktrace
+
+      # 步骤6：（可选）保存构建产物，方便下载查看
+      - name: 保存构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 模块构建产物
+          path: |
+            core/interfaces/build/outputs/aar/
+            pump/danar/build/outputs/aar/
