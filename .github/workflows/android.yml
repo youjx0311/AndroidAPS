@@ -8,7 +8,9 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v3
     - name: set up JDK 21
@@ -20,22 +22,13 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    
-    - name: Clean all caches and build files
-      run: |
-        ./gradlew clean
-        rm -rf ~/.gradle/caches/
-        rm -rf ~/.gradle/daemon/
-        rm -rf app/build/
-        rm -rf pump/danar/build/
-    
-    - name: Build with Gradle (debug mode, no parallel)
+    - name: Build with Gradle
       run: |
         export storePassword=${{ secrets.STORE_PASSWORD }}
         export keyAlias=${{ secrets.KEY_ALIAS }}
         export keyPassword=${{ secrets.KEY_PASSWORD }}
         export storeFile=${{ secrets.STORE_FILE }}
-        ./gradlew :pump:danar:assembleFullRelease --no-parallel --stacktrace --debug
+        ./gradlew assembleFullRelease
     - name: Archive production artifacts
       uses: actions/upload-artifact@v4
       with:
