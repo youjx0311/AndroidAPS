@@ -292,6 +292,7 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             return true
         }
 
+        // 第一次尝试
         val firstAttemptSuccess = attemptBolus(1)
         if (firstAttemptSuccess) {
             danaPump.bolusingTreatment = null
@@ -299,22 +300,35 @@ class DanaRKoreanExecutionService : AbstractDanaRExecutionService() {
             return true
         }
 
+        // 第二次尝试
         aapsLogger.debug(LTag.PUMP, "首次尝试失败，开始第二次尝试...")
         mSerialIOThread?.disconnect("首次失败后重试")
         danaPump.bolusStopped = true
         danaPump.bolusStopForced = false
 
         val secondAttemptSuccess = attemptBolus(2)
+        if (secondAttemptSuccess) {
+            danaPump.bolusingTreatment = null
+            commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
+            return true
+        }
+
+        // 第三次尝试
+        aapsLogger.debug(LTag.PUMP, "第二次尝试失败，开始第三次尝试...")
+        mSerialIOThread?.disconnect("第二次失败后重试")
+        danaPump.bolusStopped = true
+        danaPump.bolusStopForced = false
+
+        val thirdAttemptSuccess = attemptBolus(3)
         danaPump.bolusingTreatment = null
         
-        if (secondAttemptSuccess) {
+        if (thirdAttemptSuccess) {
             commandQueue.readStatus(rh.gs(app.aaps.core.ui.R.string.bolus_ok), null)
         } else {
-            // 明确引用当前模块的strings资源
             commandQueue.readStatus(rh.gs(app.aaps.pump.danar.R.string.bolus_failed), null)
         }
         
-        return secondAttemptSuccess
+        return thirdAttemptSuccess
     }
 
     override fun highTempBasal(percent: Int, durationInMinutes: Int): Boolean = false
