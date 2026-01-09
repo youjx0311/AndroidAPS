@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--Autotune-->
-    <string name="dynisf_adjust_sensitivity">Enable TDD based sensitivity ratio for basal and glucose target modification</string>
-    <string name="dynisf_adjust_sensitivity_summary">Uses the last 24h TDD/7D TDD to calculate sensitivity ratio used for increasing or decreasing basal rate, and also adjust glucose target if these options are enabled, in the same way Autosens does. It is recommended to start with this option turned off</string>
-    <string name="dyn_isf_adjust_title" formatted="false">DynamicISF Adjustment Factor %</string>
+    <string name="dynisf_adjust_sensitivity">启用基于TDD的敏感度比用于调整基础血糖值和血糖目标值</string>
+    <string name="dynisf_adjust_sensitivity_summary">使用最近24h TDD/7d TDD 计算用于增加或减少基础率的灵敏度比，如果启用了这些选项，也可以调整血糖目标，方法与自动感应相同。建议在开始时关闭此选项</string>
+    <string name="dyn_isf_adjust_title" formatted="false">动态ISF调整系数 %</string>
     <string name="dyn_isf_adjust_summary" formatted="false">Adjustment factor for DynamicISF. Set more than 100% for more aggressive correction doses, and less than 100% for less aggressive corrections.</string>
     <string name="high_temptarget_raises_sensitivity_title">High temptarget raises sensitivity</string>
     <string name="high_temptarget_raises_sensitivity_summary"><![CDATA[Raise sensitivity for temptargets >= 100]]></string>
@@ -92,8 +92,8 @@
     <string name="smb_disabled_in_preferences">SMB disabled in preferences</string>
     <string name="uam_disabled_in_preferences">UAM disabled in preferences</string>
     <string name="autosens_disabled_in_preferences">Autosens disabled in preferences</string>
-    <string name="use_dynamic_sensitivity_title">Enable dynamic sensitivity</string>
-    <string name="use_dynamic_sensitivity_summary">Adjust algorithm to use dynamic sensitivity instead of profile value</string>
+    <string name="use_dynamic_sensitivity_title">启用动态灵敏度</string>
+    <string name="use_dynamic_sensitivity_summary">调整算法改用动态灵敏度而非预设值</string>
 
     <!--    Verify if needed in safety-->
     <string name="limiting_iob">Limiting IOB to %1$.1f U because of %2$s</string>
