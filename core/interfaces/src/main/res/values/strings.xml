@@ -8,8 +8,8 @@
     <string name="pump_driver_changed" comment="26 characters max for translation">Pump driver changed.</string>
 
     <!--    DateUtil-->
-    <string name="minago">%1$dm ago</string>
-    <string name="secago">%1$ds ago</string>
+    <string name="minago">%1$d分钟前</string>
+    <string name="secago">%1$d秒前</string>
     <string name="minago_long">%1$d minutes ago</string>
     <string name="hoursago">%1$.1fh ago</string>
     <string name="days_ago">%1$.1f days ago</string>
@@ -31,7 +31,7 @@
     <string name="in_days_round">in %1$.0f days</string>
     <string name="shorthour">h</string>
     <string name="days">days</string>
-    <string name="hours">hours</string>
+    <string name="hours">小时</string>
     <string name="unit_second">second</string>
     <string name="unit_minute">minute</string>
     <string name="unit_hour">hour</string>
