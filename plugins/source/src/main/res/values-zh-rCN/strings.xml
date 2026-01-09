@@ -6,7 +6,7 @@
     <string name="dexcom_short">BYODA</string>
     <string name="description_source_dexcom">从德康补丁版接收血糖数据(Build Your Own Dexcom App)。</string>
     <string name="description_source_glimp">从 Glimp 接收血糖值。</string>
-    <string name="description_source_mm640g">从美敦力600Series 的AndroidUploader 接收血糖值。</string>
+    <string name="description_source_mm640g">从糖动或美敦力600Series 的AndroidUploader 接收血糖值。</string>
     <string name="poctech">Poctech</string>
     <string name="description_source_poctech">从 Poctech app 接收血糖值。</string>
     <string name="glunovo">Glunovo</string>
