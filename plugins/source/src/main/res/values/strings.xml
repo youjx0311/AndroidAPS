@@ -11,7 +11,7 @@
     <string name="description_source_dexcom">Receive BG values from the \'Build Your Own Dexcom App\'.</string>
     <string name="glimp">Glimp</string>
     <string name="description_source_glimp">Receive BG values from Glimp.</string>
-    <string name="mm640g">MM640g</string>
+    <string name="mm640g">糖动/MM640g</string>
     <string name="description_source_mm640g">Receive BG values from the 600SeriesAndroidUploader.</string>
     <string name="poctech">Poctech</string>
     <string name="description_source_poctech">Receive BG values from Poctech app</string>
