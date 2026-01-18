@@ -19,9 +19,9 @@
     <string name="patched_ottai_app">欧态-小欧生态</string>
     <string name="description_source_patched_ottai_app">从欧态易测APP接收血糖值。</string>
     <!-- Patched SI App -->
-    <string name="patched_si_app">X基补丁版</string>
-    <string name="description_source_patched_si_app">从X基补丁版App接收血糖值。</string>
+    <string name="patched_si_app">硅基动感</string>
+    <string name="description_source_patched_si_app">从X基24天共享版App接收血糖值。</string>
     <!-- Patched Sino App -->
-    <string name="patched_sino_app">爱看补丁版</string>
-    <string name="description_source_patched_sino_app">从爱看补丁版App接收血糖值。</string>
+    <string name="patched_sino_app">三诺爱看</string>
+    <string name="description_source_patched_sino_app">从爱看21天补丁版App接收血糖值。</string>
 </resources>
