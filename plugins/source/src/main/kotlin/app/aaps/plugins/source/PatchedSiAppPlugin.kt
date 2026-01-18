@@ -41,6 +41,8 @@ class PatchedSiAppPlugin @Inject constructor(
     aapsLogger, rh, preferences
 ), BgSource {
 
+    override fun advancedFilteringSupported(): Boolean = true
+
     class PatchedSiAppWorker(
         context: Context,
         params: WorkerParameters
