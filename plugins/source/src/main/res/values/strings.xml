@@ -5,7 +5,7 @@
     <string name="ns_client_bg_short">NS BG</string>
     <string name="description_source_ns_client">Downloads BG data from Nightscout</string>
     <string name="source_xdrip">xDrip+ BG</string>
-    <string name="description_source_xdrip">Receive BG values from xDrip+ and compatible apps (Juggluco etc.).</string>
+    <string name="description_source_xdrip">从xDrip,diabox,juggluco等APP获取血糖数据。</string>
     <string name="dexcom_app_patched">BYODA</string>
     <string name="dexcom_short">BYODA</string>
     <string name="description_source_dexcom">Receive BG values from the \'Build Your Own Dexcom App\'.</string>
@@ -22,8 +22,8 @@
     <string name="tomato">Tomato (MiaoMiao)</string>
     <string name="tomato_short">Tomato</string>
     <string name="description_source_tomato">Receive BG values from Tomato app (MiaoMiao device)</string>
-    <string name="random_bg">Random BG</string>
-    <string name="description_source_random_bg">Generate random BG data (Demo mode only)</string>
+    <string name="random_bg">随机血糖</string>
+    <string name="description_source_random_bg">获取随机血糖数据(仅作演示使用)</string>
     <string name="random_bg_short">BG</string>
     <string name="bgsource_settings">BG source settings</string>
     <string name="bgsource_log_sensor_change_title">Accept sensor start</string>
