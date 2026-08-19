@@ -114,7 +114,7 @@
     <string name="reading_activation_status">请稍候，正在从泵读取激活状态.</string>
 
     <!-- settings-->
-    <string name="失联警报已被强制启用，因为移宇贴泵有可能发生故障，导致设备无法通讯.</string>
+    <string name="pump_lost_alarm_forced">失联警报已被强制启用，因为移宇贴泵有可能发生故障，导致设备无法通讯.</string>
     <string name="pump_unreachable_threshold_minutes_summary">建议设置为30分钟，因为Medtrum贴片可能会失效且无法获取.</string>
     <string name="sn_input_title">序列号</string>
     <string name="sn_input_summary">输入您的泵底座序列号.</string>
